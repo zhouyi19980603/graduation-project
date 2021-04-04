@@ -19,6 +19,7 @@
 #include <random>
 
 
+
 using namespace boost::property_tree;
 
 //==============================================
@@ -26,10 +27,33 @@ using namespace boost::property_tree;
 //==============================================
 
 
+
 FC_Message_Handle::FC_Message_Handle(FC_Server* server,FC_Connection *connection )
     :_server(server),_connection(connection)
 {
-    
+    redisInit();
+}
+
+//初始化redis数据库
+void FC_Message_Handle::redisInit()
+{
+    struct timeval timeout = {1,500000};
+    const char* ip = "127.0.0.1";
+    int port = 6379;
+    _content = redisConnectWithTimeout(ip,port,timeout);
+    if(_content == nullptr || _content->err){
+        if(_content){
+            cout<<"Connection error: "<<_content->errstr<<endl;
+        }else{
+            cout<<"Connection error: can't allocate redis context\n";
+        }
+        exit(1);
+    }
+}
+
+FC_Message_Handle::~FC_Message_Handle()
+{
+    redisFree(_content);//释放redis的连接
 }
 
 void FC_Message_Handle::handle_header(FC_Message *message){
@@ -115,11 +139,12 @@ void FC_Message_Handle::handle_body(FC_Message* message){
         }
     }else if(type & FC_MOMENTS){
         switch (type) {
-        case FC_LIKE:
+        case FC_LIKE:  //点赞
+            cout<<"点赞消息"<<endl;
             break;
-        case FC_COMMENT:
+        case FC_COMMENT: //评论
             break;
-        case FC_NEW_MOMENTS:
+        case FC_NEW_MOMENTS: //发布消息
             handle_new_moments(message->body());
             break;
         default:
@@ -618,32 +643,60 @@ void FC_Message_Handle::handle_new_moments(const char* content)
 {
     Json::Value root;
     Json::Reader reader;
-    string acc;
+    string acc,postId;
     if(!reader.parse(content,root))
     {
         std::cout <<"failed" <<std::endl;
         exit(0);
     }else
     {
-        acc = root["userId"].asString();
-//        image = root["con_image"].asString();
+        acc = root["userId"].asString(); //得到用户id
+        postId = root["dyId"].asString();
     }
 
-//    if(save_user_head("zhouyi",image))
-//    {
-//        cout<<"保存成功"<<endl;
-//    }
-    //在这里去填充观察者
-    Subject* moments = new ConcreteMoments ();
+    DbBroker* broker = new DbBroker();
+    if(broker->add_post(QString::fromStdString(acc),QString::fromStdString(postId))){
+        //添加进redis中
+        _reply = (redisReply*)redisCommand(_content,"hset %s %s %s",postId.c_str(),"user_id",acc.c_str());
+        freeReplyObject(_reply);
+        //在这里去填充观察者
+        Subject* moments = new ConcreteMoments ();
 
-    moments->clearObserver();
-    for(auto each : _server->get_friends_list()[acc])
+        moments->clearObserver();
+        //得到所有的列表
+        for(auto each : _server->get_friends_list()[acc])
+        {
+            Observer* observer = new Viewer (_server,each);
+            moments->registerObserver(observer);//注册进去
+        }
+        moments->setContent(content,FC_NEW_MOMENTS);
+    }else
     {
-        Observer* observer = new Viewer (_server,each);
-        moments->registerObserver(observer);//注册进去
+        std::cout<<"add post failed"<<std::endl;
     }
-    moments->setContent(content);
 
+
+}
+
+//就可以直接查询redis中来确定user_id即可
+void FC_Message_Handle::handle_like_message(const char *content)
+{
+    Json::Value root;
+    Json::Reader reader;
+    string dyId,userId;
+    if(!reader.parse(content,root))
+    {
+        exit(0);
+    }else
+    {
+        dyId = root["dyId"].asString();
+        userId = root["userId"].asString();
+    }
+    //通过dyId，查找对应的authorId，这里就会开始使用redis
+
+    _reply = (redisReply*)redisCommand(_content,"hget %s user_id",dyId.c_str());
+    //找到user_id向user_id发送通知有人点赞（这里面进行处理），向user_id的所有好友发送这个点赞通知
+    //_reply->str;//得到对应的值user_id,在里面加一个对应的类型即可
 }
 
 std::string FC_Message_Handle::handle_user_head(const string &filepath)

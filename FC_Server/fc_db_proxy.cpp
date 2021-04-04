@@ -99,3 +99,9 @@ bool DbBroker::add_user(const QString &nick, const QString &pass, const QString 
     return db->insert(query1) && db->insert(query2) && db->insert(query3);
 }
 
+bool DbBroker::add_post(const QString &user_id, const QString &post_id)
+{
+    QString query = "insert into fc_post(user_id,post_id) value ('"+user_id+"','"+post_id+"')";
+    return db->insert(query);
+}
+

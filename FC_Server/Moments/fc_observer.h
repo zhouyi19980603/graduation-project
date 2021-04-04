@@ -6,7 +6,7 @@
 class Observer
 {
 public:
-    virtual void update(const std::string& content) =0;
+    virtual void update(const std::string& content,unsigned type) =0;
 };
 
 #endif // OBSERVER_H

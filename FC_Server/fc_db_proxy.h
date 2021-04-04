@@ -36,6 +36,7 @@ public:
     bool add_friends(const QString& user_id,const QString& friends_id);
     bool serach_friend(const QString& account);
     bool add_user(const QString&,const QString&,const QString& acc);
+    bool add_post(const QString& user_id,const QString& post_id);
 private:
     FC_Server* _server;
     FC_DataBase* db;

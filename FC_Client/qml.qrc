@@ -164,5 +164,8 @@
         <file>qml/BussinessPage/Moments/back.jpg</file>
         <file>qml/BussinessPage/Moments/@23456.jpg</file>
         <file>qml/BussinessPage/Moments/@13456.jpg</file>
+        <file>qml/resource/icons/label-icons/comments-1.png</file>
+        <file>qml/resource/icons/label-icons/like-1.png</file>
+        <file>qml/BussinessPage/Moments/exam.qml</file>
     </qresource>
 </RCC>

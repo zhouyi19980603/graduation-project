@@ -4,6 +4,8 @@
 #include "fc_observer.h"
 #include <QString>
 
+
+
 struct dynamic
 {
     QString userId;
@@ -12,6 +14,7 @@ struct dynamic
     QString con_text;
     QString con_image;//path
     int time;
+    QString dyId;//动态id
 };
 class Subject
 {
@@ -19,7 +22,7 @@ public:
     virtual void registerObserver(Observer *o) = 0;  //注册一个观察者
     virtual void removeObserver(Observer *o) = 0;     //移除一个观察者
     virtual void notifyObservers()=0;   //当状态改变时更新所以观察者
-    virtual void setContent(const std::string& content)=0;
+    virtual void setContent(const std::string& content,unsigned type)=0;
     virtual void clearObserver()=0;
 };
 

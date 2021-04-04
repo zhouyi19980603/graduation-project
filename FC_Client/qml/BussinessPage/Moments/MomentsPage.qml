@@ -7,6 +7,9 @@ Page {
     id:cicle
     width: 360
     height: 720
+    Constant{
+        id:constant
+    }
     topBar: TopBar {
         id: topBar
 
@@ -105,11 +108,12 @@ Page {
             width: parent.width
             height: parent.height
             model: moments_model
+//            model: cicleModel
             delegate: cicleDelegate
             snapMode: ListView.NoSnap
         }
 
-    /*ListModel{
+    ListModel{
         id:cicleModel
         ListElement{
             heading:"@13456.jpg"
@@ -129,7 +133,7 @@ Page {
             content_text:"不喜欢雨天!!"
             content_image:"two.jpg"
         }
-    }*/
+    }
 
     Component{
         id:cicleDelegate
@@ -196,22 +200,54 @@ Page {
 
                 }
                 Image {
-                    id: point
-                    source: "point.png"
+                    id: like
+                    source:constant.momentsLikeIcon
                     anchors.right: parent.right
-                    anchors.rightMargin: 9
-                    width: 25
+                    anchors.rightMargin: parent.width/3
+                    width: 20
+                    height: 20
+                    fillMode: Image.PreserveAspectCrop
+                    MouseArea{
+                        anchors.fill: parent
+                        onClicked:{
+                            //moments_control.like(dyId);
+                            likeModule.text =  profilemsg.nickname
+                            console.log(profilemsg.nickname)//显示自己的昵称就可
+                        }
+//                        onClicked: console.log("发送点赞信号")
+                    }
+                }
+                Image {
+                    id: comments
+                    source:constant.momentsCommentsIcon
+                    anchors.right: parent.right
+                    anchors.rightMargin: parent.width/5
+                    width: 20
                     height: 20
                     fillMode: Image.PreserveAspectCrop
                 }
             }
-            Rectangle{
+            TextEdit{
+                id:likeModule
                 anchors.top: tail.bottom
+                anchors.topMargin: 6
+                anchors.left: model_heading.right
+                anchors.leftMargin: 7
+                //text:
+                //visible: false
+            }
+
+//            横线
+            Rectangle{
+                id:split
+                anchors.top: likeModule.visible? likeModule : tail.bottom
+//                anchors.top: tail.bottom
                 anchors.topMargin: 10
                 color: "#cdc7c7"
                 width: parent.width
                 height: 1
             }
+
         }
 
 

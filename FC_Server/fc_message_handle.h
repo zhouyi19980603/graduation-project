@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <hiredis/hiredis.h>
 
 using namespace std;
 
@@ -15,6 +16,9 @@ class FC_Message_Handle
 {
 public:
     FC_Message_Handle(FC_Server* server,FC_Connection *connection );
+    void redisInit();
+
+    ~FC_Message_Handle();
     //handle recv message
     void handle_header(FC_Message*);
     void handle_body(FC_Message*);
@@ -47,6 +51,7 @@ public:
 
     //朋友圈消息
     void handle_new_moments(const char* content);
+    void handle_like_message(const char* content);
 
     //历史记录
     void store_history(FC_Message* msg,const string& path);
@@ -66,9 +71,12 @@ private:
     bool save_user_head(const std::string& acc,const string& heading);
 
 
+
 private:
     //    DbBroker* _broker = nullptr;
     FC_Server* _server = nullptr;
+    redisContext* _content;
+    redisReply* _reply;
 
     FC_Connection *_connection = nullptr;
 };

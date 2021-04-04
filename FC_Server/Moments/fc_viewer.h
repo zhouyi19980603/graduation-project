@@ -20,7 +20,7 @@ public:
 //    void receiveCommonts(const std::string &content) override;
 
     FC_Message* generate_message(unsigned type,const char* content);
-    void update(const std::string &content) override;
+    void update(const std::string &content,unsigned type) override;
 };
 
 #endif // VIEWER_H

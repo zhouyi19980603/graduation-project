@@ -10,6 +10,7 @@ INCLUDEPATH += .
 QT += quick sql
 #LIBS +=/usr/local/include/boost_1_72_0/stage/lib/libboost_thread.a
 LIBS +=/usr/lib/libboost_thread.a
+LIBS += -lhiredis
 include(json/json.pri)
 
 

@@ -19,8 +19,8 @@ FC_Message *Viewer::generate_message(unsigned type, const char *content)
     return message;
 }
 
-void Viewer::update(const std::string &content)
+void Viewer::update(const std::string &content,unsigned type)
 {
-    FC_Message* msg = generate_message(FC_NEW_MOMENTS,content.c_str());
+    FC_Message* msg = generate_message(type,content.c_str());
     _server->forward_message(_viewid,msg);
 }

@@ -10,7 +10,7 @@
 
 /**************************************************************
 
-  @brief....:核心底层数据库，基础操作
+  @brief....:核心底层数据库，基础操作，里面包含redis和mysql数据库
   @author...: zhouyi
   @date.....:2020-05-18
 
@@ -20,6 +20,7 @@
 #include <QString>
 #include <QVector>
 #include <QSqlDatabase>
+
 
 class FC_DataBase
 {
@@ -32,6 +33,7 @@ public:
     bool move(const QString& sql);
     bool update(const QString& sql);
     bool createConnect();
+
     ~FC_DataBase();
 private:
    //这里放Server总类

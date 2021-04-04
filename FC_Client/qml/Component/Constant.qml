@@ -39,6 +39,8 @@ QtObject {
     readonly property url plusInactiveIcon: icons.inactiveIcon("plus")
 
     readonly property url momentsLabelIcon: icons.labelIcon("moments")                      // 朋友圈
+    readonly property url momentsLikeIcon: icons.labelIcon("like-1") //点赞的图标
+    readonly property url momentsCommentsIcon: icons.labelIcon("comments-1")
     readonly property url scanQRCodeLabelIcon: icons.labelIcon("scan-qr-code")              // 二维码
     readonly property url shakeLabelIcon: icons.labelIcon("shake")                          // 摇一摇
     readonly property url peopleNearbyLabelIcon: icons.labelIcon("people-nearby")           // 附近的人
