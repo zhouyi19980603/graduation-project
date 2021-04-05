@@ -12,7 +12,6 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/thread.hpp>
 #include <QSqlQuery>
-#include <json/json.h>
 #include "fc_db_proxy.h"
 #include "./Moments/fc_concretemoments.h"
 #include "./Moments/fc_viewer.h"
@@ -141,11 +140,15 @@ void FC_Message_Handle::handle_body(FC_Message* message){
         switch (type) {
         case FC_LIKE:  //点赞
             cout<<"点赞消息"<<endl;
+            handle_like_message(message->body());
             break;
         case FC_COMMENT: //评论
             break;
         case FC_NEW_MOMENTS: //发布消息
             handle_new_moments(message->body());
+            break;
+        case FC_REQUEST_DY:
+            handle_request_dy(message->body());
             break;
         default:
             cout<<"朋友圈没有这样的类型"<<endl;
@@ -656,6 +659,22 @@ void FC_Message_Handle::handle_new_moments(const char* content)
 
     DbBroker* broker = new DbBroker();
     if(broker->add_post(QString::fromStdString(acc),QString::fromStdString(postId))){
+        //添加到json文件中
+        string filename = "./config/moments.json";
+
+        Json::Value item;
+        item["con_text"] = root["con_text"];//文本内容
+        item["con_image"] = root["con_image"];//图片
+        item["time"] = root["time"];//时间
+        item["user_id"] = root["userId"];
+        item["post_id"] = root["dyId"];
+        add_json_data(item,filename,postId,1);//里面的图片直接保存的二进制图片,1表示对象
+
+        item.clear();//清空
+        item["post_id"] = root["dyId"];
+        filename = "./config/user_moments.json";
+        //保存在user_moments中
+        add_json_data(item,filename,acc,2);//2表示数组
         //添加进redis中
         _reply = (redisReply*)redisCommand(_content,"hset %s %s %s",postId.c_str(),"user_id",acc.c_str());
         freeReplyObject(_reply);
@@ -683,7 +702,7 @@ void FC_Message_Handle::handle_like_message(const char *content)
 {
     Json::Value root;
     Json::Reader reader;
-    string dyId,userId;
+    string dyId,userId,userNickname;
     if(!reader.parse(content,root))
     {
         exit(0);
@@ -691,12 +710,69 @@ void FC_Message_Handle::handle_like_message(const char *content)
     {
         dyId = root["dyId"].asString();
         userId = root["userId"].asString();
+        userNickname = root["userNick"].asString();
     }
     //通过dyId，查找对应的authorId，这里就会开始使用redis
 
     _reply = (redisReply*)redisCommand(_content,"hget %s user_id",dyId.c_str());
+
+    Subject* moments = new ConcreteMoments ();
+
+    moments->clearObserver();
+    //得到所有的列表
+    std::cout<<"handle_like_message:"<<_reply->str<<std::endl;
+    std::cout<<_server->get_friends_list()[_reply->str].size()<<std::endl;
+    for(auto each : _server->get_friends_list()[_reply->str])
+    {
+        Observer* observer = new Viewer (_server,each);
+        moments->registerObserver(observer);//注册进去
+    }
+    moments->setContent(userNickname,FC_LIKE);//只传送nickname进去
     //找到user_id向user_id发送通知有人点赞（这里面进行处理），向user_id的所有好友发送这个点赞通知
     //_reply->str;//得到对应的值user_id,在里面加一个对应的类型即可
+}
+
+void FC_Message_Handle::handle_request_dy(const char *content)
+{
+    //得到userid，现在所在的content就是userid，通过userid，找到好有,发送10条过去
+    //从json中读取来放在redis中
+    //先读取user_moments中的内容
+    Json::Reader reader1,reader2;
+    Json::Value root1,root2;
+    string filename1 = "./config/user_moments.json";
+    string filename2 = "./config/moments.json";
+    ifstream is1,is2;
+    is1.open(filename1,std::ios::binary);
+    is2.open(filename2,std::ios::binary);
+
+
+    //写过客户端
+    Json::FastWriter write;
+    Json::Value writeRoot;
+    if(!reader2.parse(is2,root2))
+    {
+        cout<<"reader解析失败"<<endl;
+        exit(0);
+    }
+    if(reader1.parse(is1,root1))
+    {
+        Json::Value item;
+        //读取两条信息发出去,消息条数可以自己控制
+        for(int i=2;i<root1[content].size();i++)
+        {
+            string postId = root1[content][i]["post_id"].asString();
+            std::cout<<"handle_request_dy: "<<postId<<std::endl;
+            //查找另一个文件
+            //item[postId] = root2[postId];
+            writeRoot["moments"].append(root2[postId]);
+        }
+
+    }
+    string contents = write.write(writeRoot);
+    FC_Message* message = generate_message(FC_REPLY_DY,contents.c_str());
+    this->_connection->write(message);
+    is1.close();
+    is2.close();
 }
 
 std::string FC_Message_Handle::handle_user_head(const string &filepath)
@@ -737,6 +813,32 @@ bool FC_Message_Handle::save_user_head(const string &acc, const string &heading)
     fout.write(heading.data(), heading.size());
     fout.close();
     return true;
+}
+
+void FC_Message_Handle::add_json_data(Json::Value item, const string &filename,const string& key,unsigned type)
+{
+    Json::Reader reader;
+    Json::Value root;
+    ifstream is;
+
+    is.open(filename,std::ios::binary);
+    if(reader.parse(is,root,false))
+    {
+
+        if(type == 1)
+            root[key] = item;
+        else if(type == 2)
+            root[key].append(item);
+
+        Json::FastWriter write;
+        string strWrite = write.write(root);
+        //cout<<strWrite<<endl;
+        ofstream ofs;
+        ofs.open(filename);
+        ofs << strWrite;
+        ofs.close();
+    }
+    is.close();
 }
 
 //端对端存储

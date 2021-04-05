@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <hiredis/hiredis.h>
+#include <json/json.h>
 
 using namespace std;
 
@@ -52,6 +53,7 @@ public:
     //朋友圈消息
     void handle_new_moments(const char* content);
     void handle_like_message(const char* content);
+    void handle_request_dy(const char* content);
 
     //历史记录
     void store_history(FC_Message* msg,const string& path);
@@ -70,7 +72,9 @@ private:
     string handle_user_head(const string& filepath);
     bool save_user_head(const std::string& acc,const string& heading);
 
+    //保存数据在json文件中（朋友圈信息，聊天记录）
 
+    void add_json_data(Json::Value item,const string& filename,const string& key,unsigned type);
 
 private:
     //    DbBroker* _broker = nullptr;

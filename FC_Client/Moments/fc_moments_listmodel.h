@@ -11,7 +11,7 @@ struct dynamic
     QString nickname;
     QString con_text;
     QString con_image;//path
-    int time;
+    QString time;
     QString dyId;//动态的id
 };
 
@@ -26,6 +26,7 @@ public:
     int rowCount(const  QModelIndex &parent = QModelIndex()) const; //row count
 
     QHash<int, QByteArray> roleNames() const;
+    void clear();
 
     Q_INVOKABLE void add(dynamic& nic);
     Q_INVOKABLE void add();

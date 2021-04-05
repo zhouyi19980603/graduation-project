@@ -128,12 +128,15 @@ void FC_Message_Handle::handle_body(FC_Message* message){
     }else if(type & FC_MOMENTS){
         switch (type) {
         case FC_LIKE:
+            _moment_handle->handle_like_message(message->body());
             break;
         case FC_COMMENT:
             break;
         case FC_NEW_MOMENTS:
             _moment_handle->handle_new_moments(message->body());
-//            handle_new_moments(message->body());
+            break;
+        case FC_REPLY_DY:
+            _moment_handle->handle_replay_dy(message->body());
             break;
         default:
             cout<<"朋友圈没有这样的类型"<<endl;

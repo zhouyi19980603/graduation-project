@@ -11,7 +11,7 @@ Rectangle{
         color: "#f3f2f2"
         TextEdit{
             anchors.fill: parent
-            text: qsTr("Hello World")
+            text: qsTr("Hello World Mrs Zhou")
             selectionColor: "#891414"
         }
     }

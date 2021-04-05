@@ -8,6 +8,7 @@
 class FC_Client;
 class ProfileMsg;
 class FC_Message_Handle;
+class LikeMsg;
 
 class FC_Moments_Control : public QObject
 {
@@ -18,12 +19,17 @@ public:
 
     Q_INVOKABLE void publish_dynamic();
     Q_INVOKABLE void like(QString id);
+    Q_INVOKABLE void request_dynamic_data();
+
+    //hander message
     void handle_new_moments(const char* content);
+    void handle_like_message(const char* content);
+    void handle_replay_dy(const char* content);
 private:
     FC_Client* _client = nullptr;
     FC_Moments_Model* _model = nullptr;
     ProfileMsg* _profile = nullptr;
-
+    LikeMsg* _msg = nullptr;
 };
 
 #endif // FC_MOMENTS_CONTROL_H

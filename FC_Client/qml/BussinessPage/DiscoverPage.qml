@@ -55,7 +55,8 @@ Page {
                     MouseArea{
                         anchors.fill: parent
                         onClicked: {
-//                            console.log("what happy")
+                            //在这里请求数据
+                            moments_control.request_dynamic_data();
                             __PushPage(Qt.resolvedUrl("./Moments/MomentsPage.qml"), {} ); //压入一个新的界面
                         }
                     }

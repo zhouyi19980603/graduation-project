@@ -51,6 +51,8 @@
 #define FC_LIKE                 unsigned(FC_MOMENTS | 1<<1)       //点赞
 #define FC_COMMENT              unsigned(FC_MOMENTS | 1<<2)       //评论
 #define FC_NEW_MOMENTS          unsigned(FC_MOMENTS | 1<<3)       //新的动态信息
+#define FC_REQUEST_DY           unsigned(FC_MOMENTS | 1<<4)        //请求动态信息,刷新
+#define FC_REPLY_DY             unsigned(FC_MOMENTS | 1<<5)        //服务端回复刷新的动态消息
 
 //part five -- undifined
 #define FC_UNDIFINED unsigned(1<<27)

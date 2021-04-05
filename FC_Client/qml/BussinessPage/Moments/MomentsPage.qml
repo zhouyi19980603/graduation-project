@@ -195,8 +195,8 @@ Page {
                 width: content.width
 
                 Label{
-                    id:time
-                    text: qsTr("1分钟前")
+                    id:tiem
+                    text: time
 
                 }
                 Image {
@@ -210,9 +210,9 @@ Page {
                     MouseArea{
                         anchors.fill: parent
                         onClicked:{
-                            //moments_control.like(dyId);
-                            likeModule.text =  profilemsg.nickname
-                            console.log(profilemsg.nickname)//显示自己的昵称就可
+                            moments_control.like(dyId);
+                            //likeModule.text =  profilemsg.nickname
+                            //console.log(profilemsg.nickname)//显示自己的昵称就可
                         }
 //                        onClicked: console.log("发送点赞信号")
                     }
@@ -233,8 +233,12 @@ Page {
                 anchors.topMargin: 6
                 anchors.left: model_heading.right
                 anchors.leftMargin: 7
-                //text:
-                //visible: false
+                text:msg.like_text
+                visible: likeModule.text!=""
+            }
+            TextEdit{
+                id:comment
+                visible: false
             }
 
 //            横线

@@ -4,24 +4,6 @@
 FC_Moments_Model::FC_Moments_Model(QObject *parent)
     :QAbstractListModel(parent)
 {
-//    dynamic one;
-//    one.headpath = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/@13456.jpg";
-//    one.nickname = "张礼";
-//    one.con_text = "夜阑卧听风吹雨。";
-//    one.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
-//    _data.push_back(one);
-//    dynamic one1;
-//    one1.headpath = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/@13456.jpg";
-//    one1.nickname = "张礼";
-//    one1.con_text = "夜阑卧听风吹雨。";
-//    one1.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
-//    dynamic one2;
-//    one2.headpath = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/@13456.jpg";
-//    one2.nickname = "张礼";
-//    one2.con_text = "夜阑卧听风吹雨。";
-//    one2.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
-//    _data.push_back(one1);
-//    _data.push_back(one2);
 }
 
 FC_Moments_Model *FC_Moments_Model::getInstance()
@@ -67,6 +49,11 @@ QHash<int, QByteArray> FC_Moments_Model::roleNames() const
     _roles[5] = "userid";
     _roles[6] = "dyId";
     return _roles;
+}
+
+void FC_Moments_Model::clear()
+{
+    _data.clear();
 }
 
 void FC_Moments_Model::add(dynamic& nic)

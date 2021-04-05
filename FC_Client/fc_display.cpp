@@ -19,6 +19,7 @@
 #include<iostream>
 #include "./Moments/fc_moments_listmodel.h"
 #include "./Moments/fc_moments_control.h"
+#include "./Moments/fc_moments_like.h"
 
 using boost::thread;
 
@@ -39,6 +40,7 @@ FC_Display::FC_Display(FC_Client* client,FC_Profile* profile)
 //    this->_moments_model = new FC_Moments_Model();
     this->_moments_model = FC_Moments_Model::getInstance();
     this->_control = new FC_Moments_Control (client);
+    this->_msg = LikeMsg::getInstance();
 
 }
 FC_Display::~FC_Display(){
@@ -135,6 +137,7 @@ void FC_Display::show(){
     this->_engine->rootContext()->setContextProperty("message_listModel",this->_list_model);
     this->_engine->rootContext()->setContextProperty("moments_model",this->_moments_model);
     this->_engine->rootContext()->setContextProperty("moments_control",this->_control);
+    this->_engine->rootContext()->setContextProperty("msg",this->_msg);
 
     this->_engine->load(QUrl(QStringLiteral("qrc:/qml/Fc_MainWindow.qml")));
     this->_app_ui->exec();
