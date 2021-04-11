@@ -25,6 +25,7 @@ public:
     void handle_body(FC_Message*);
     //handle send message
     FC_Message* generate_message(unsigned type,const char* content);
+
     //about json message　发送初始化信息
     void send_self_msg(const string& username);
     void send_friends_lists(const string& username);
@@ -74,6 +75,7 @@ private:
 
     //保存数据在json文件中（朋友圈信息，聊天记录）
 
+    void store_json_data(const string& item,const string& filename,const string& key);
     void add_json_data(Json::Value item,const string& filename,const string& key,unsigned type);
     void update_json_like_data(const string& item,const string& key);
 

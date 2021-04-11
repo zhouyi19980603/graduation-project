@@ -86,29 +86,45 @@ void FC_Display::recv_history(FC_Message *msg)
     Json::Value root;
     Json::Reader reader;
 
+
     if (reader.parse(tmpHistory, root))
     {
         //读取数组信息
         cout << "Here's history:" << endl;
-        for (unsigned int i = 0; i < root["msgContent"].size(); i++)
+
+        for (unsigned int i = 0; i < root["chats"].size(); i++)
         {
-            string tmpContent = root["msgContent"][i].asString();
-            cout <<"元素打印"<< tmpContent<<endl;
+            string send_id,recv_id,time,content,type;
+            send_id = root["chats"][i]["send_id"].asString();
+            recv_id = root["chats"][i]["recv_id"].asString();
+            time = root["chats"][i]["time"].asString();
+            content = root["chats"][i]["msg_content"].asString();
+            type = root["chats"][i]["msg_type"].asString();
 
-            const char* tmp = tmpContent.c_str();
-            char* w_account = new char[7];
-            memset(w_account,'\0',7);
-            char* m_account =new char[7];
-            memset(m_account,'\0',6);
-            memcpy(w_account,tmp,FC_ACC_LEN);  //第一个账号
-            memcpy(m_account,tmp+6,FC_ACC_LEN);//第二个账号
-            const char *content = tmp+12;  //消息内容
-
-            this->_list_model->handle_history({QString::fromStdString(w_account),
-                                               QString::fromStdString(m_account),    //消息接受这ID
-                                               QString::fromStdString("."),
+            this->_list_model->handle_history({QString::fromStdString(send_id),
+                                               QString::fromStdString(recv_id),    //消息接受这ID
+                                               QString::fromStdString(time),
                                                QString::fromStdString(content),
-                                               QString::fromStdString("0")});  //文本消息
+                                               QString::fromStdString(type)});
+//            //更改
+//            string tmpContent = root["chats"][i].asString();
+//            cout <<"元素打印"<< tmpContent<<endl;
+
+//            const char* tmp = tmpContent.c_str();
+//            char* w_account = new char[7];
+//            memset(w_account,'\0',7);
+//            char* m_account =new char[7];
+//            memset(m_account,'\0',6);
+//            memcpy(w_account,tmp,FC_ACC_LEN);  //第一个账号
+//            memcpy(m_account,tmp+6,FC_ACC_LEN);//第二个账号
+//            const char *content = tmp+12;  //消息内容
+
+//            this->_list_model->handle_history({QString::fromStdString(w_account),
+//                                               QString::fromStdString(m_account),    //消息接受这ID
+//                                               QString::fromStdString("."),
+//                                               QString::fromStdString(content),
+//                                               QString::fromStdString("0")});  //文本消息
+
         }
 
         cout << "Reading Complete!" << endl;

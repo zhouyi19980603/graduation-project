@@ -490,7 +490,23 @@ void FC_Message_Handle::handle_offlineM(const string &acc)
     {
         while (!_server->get_offlineM()[acc].empty()) {
             qDebug()<<"存在离线消息";
-            _server->forward_message(acc,_server->get_offlineM()[acc].front()); //取队头元素
+            FC_Message *msg = _server->get_offlineM()[acc].front();
+            if(msg->mess_type() == FC_TEXT_MEG){
+                //存消息在本地，在发送
+                Json::Value root;
+                Json::Reader reader;
+                string id;
+                if(reader.parse(msg->body(),root))
+                {
+                    id = root["id"].asString();
+                    store_json_data(id,"./history/userChatHistory.json",acc);
+                }else
+                {
+                    cout<<"parse failed handle_offlineM"<<endl;
+                    exit(0);
+                }
+            }
+            _server->forward_message(acc,msg); //取队头元素
             _server->get_offlineM()[acc].pop(); //弹出队头元素
         }
     }
@@ -522,8 +538,9 @@ void FC_Message_Handle::handle_sign_in(const char* s){
         this->_server->add_identified(account,this->_connection); //添加在在线列表中
         send_self_msg(account);
         send_friends_lists(account);
-        handle_offlineM(account);
         send_history(account);
+        handle_offlineM(account);
+
     }else
     {
         FC_Message* msg = generate_message(FC_SIGN_IN_R,"error");
@@ -565,43 +582,114 @@ void FC_Message_Handle::handle_register(FC_Message *msg) //里面为昵称和密
         cout<<"注册在数据库中失败"<<endl;
 
 }
+/*更改*/
 void FC_Message_Handle::send_history(const string &userId)
 {
 
-    Json::Reader reader;
-    Json::Value root;
+    Json::Reader reader1,reader2;
+    Json::Value root1,root2;
 
-    //从文件中读取，保证当前文件有demo.json文件
-    ifstream infile("history/"+userId+".json", ios::binary);
+    string filename1 = "./history/userChatHistory.json";
+    string filename2 = "./history/chatHistory.json";
+    ifstream is1(filename1,ios::binary),is2(filename2,ios::binary);
+    if(is1.is_open() && is2.is_open())
+    {
+       Json::FastWriter write;
+       Json::Value writeRoot;
+       if(!reader2.parse(is2,root2))
+       {
+           cout<<"send_history: reader2解析失败"<<endl;
+           exit(0);
+       }
 
-    if (!infile.is_open())
-    {
-        cout << "Error opening json file\n";
-        return;
+       if(reader1.parse(is1,root1))
+       {
+           Json::Value item;
+           for(int i=0;i<root1[userId].size();i++)
+           {
+               string msgId = root1[userId][i].asString();
+               writeRoot["chats"].append(root2[msgId]);
+           }
+       }
+
+       string contents = write.write(writeRoot);
+       FC_Message* tmp = generate_message(FC_TEXT_MEG_HISTORY,contents.c_str());
+       this->_connection->write(tmp);
+       is1.close();
+       is2.close();
     }
-    ostringstream buf;
-    char ch;
-    while(buf &&infile.get(ch))
-    {
-      buf.put(ch);
-    }
-    infile.close();
-    string tmpContent = buf.str();
-//    qDebug() <<"json  读取数据打印:"<<tmpContent.c_str();
-    FC_Message* tmp = generate_message(FC_TEXT_MEG_HISTORY,tmpContent.c_str());
-    this->_connection->write(tmp);
+
+//    //从文件中读取，保证当前文件有demo.json文件
+//    ifstream infile("history/"+userId+".json", ios::binary);
+//    //ifstream infile("history/"+userId+".json", ios::binary);
+
+//    if (!infile.is_open())
+//    {
+//        cout << "Error opening json file\n";
+//        return;
+//    }
+//    ostringstream buf;
+//    char ch;
+//    while(buf &&infile.get(ch))
+//    {
+//      buf.put(ch);
+//    }
+//    infile.close();
+//    string tmpContent = buf.str();
+////    qDebug() <<"json  读取数据打印:"<<tmpContent.c_str();
+//    FC_Message* tmp = generate_message(FC_TEXT_MEG_HISTORY,tmpContent.c_str());
+//    this->_connection->write(tmp);
 
 }
-
+/*
+修复情况 可见readme
+*/
 void FC_Message_Handle::handle_text_msg(FC_Message* msg){
-    char s_account[FC_ACC_LEN];  //保存消息接受者账号
-    memcpy(s_account,msg->header()+14,FC_ACC_LEN);  //4+4+6
-    char *content = msg->body();
-    //确定好友是否在先在决定是否发送消息
-    this->_server->forward_message(string(s_account),msg);
-    std::cout<< s_account<<std::endl;
-    std::cout<<content<<std::endl;
-    get_file_path(msg);
+
+    Json::Value root;
+    Json::Reader reader;
+    string  send_id,recv_id,id;
+    try {
+        reader.parse(msg->body(),root);
+        //读取send_id,recv_id，以及消息的id
+        send_id = root["send_id"].asString();
+        recv_id = root["recv_id"].asString();
+        id = root["id"].asString();
+
+        //保存在文件中保存在userChatHistory.json中,id为内容,在线为正常存储信息
+        if(_server->get_onlineP().count(recv_id) !=0)
+        //发送给好友
+        {
+            this->_server->forward_message(recv_id,msg);
+            store_json_data(id,"./history/userChatHistory.json",send_id);
+            store_json_data(id,"./history/userChatHistory.json",recv_id);
+
+        }
+        else
+        {
+            //发送者的消息正常存储
+            store_json_data(id,"./history/userChatHistory.json",send_id);
+            _server->set_offlineM(recv_id,msg);
+
+        }
+
+        //保存在chatHistory.json中
+        add_json_data(root,"./history/chatHistory.json",id,1);
+        //验证好友是否在线
+
+    } catch (int e) {
+
+    }
+
+//    char s_account[FC_ACC_LEN];  //保存消息接受者账号
+//    memcpy(s_account,msg->header()+14,FC_ACC_LEN);  //4+4+6
+//    char *content = msg->body();
+//    //确定好友是否在线
+
+//    this->_server->forward_message(string(s_account),msg);
+//    std::cout<< s_account<<std::endl;
+//    std::cout<<content<<std::endl;
+    //get_file_path(msg);
 }
 
 void FC_Message_Handle::handle_file_msg(FC_Message *msg)
@@ -819,29 +907,81 @@ bool FC_Message_Handle::save_user_head(const string &acc, const string &heading)
     return true;
 }
 
+void FC_Message_Handle::store_json_data(const string& item, const string &filename, const string &key)
+{
+    Json::Reader reader;
+    Json::Value root;
+
+
+    if(access(filename.c_str(),F_OK) == -1){
+        root[key].append(item);
+        Json::FastWriter write;
+        string strWrite = write.write(root);
+        //表明不存在
+        ofstream os;
+        os.open(filename, std::ios::out | std::ios::binary);
+        os << strWrite;
+        os.close();
+    }else
+    {
+        ifstream is;
+        is.open(filename,std::ios::binary);
+        if(reader.parse(is,root,false))
+        {
+            root[key].append(item);
+            Json::FastWriter write;
+            string strWrite = write.write(root);
+            ofstream ofs;
+            ofs.open(filename);
+            ofs << strWrite;
+            ofs.close();
+        }
+        is.close();
+    }
+
+}
+
 void FC_Message_Handle::add_json_data(Json::Value item, const string &filename,const string& key,unsigned type)
 {
     Json::Reader reader;
     Json::Value root;
-    ifstream is;
 
-    is.open(filename,std::ios::binary);
-    if(reader.parse(is,root,false))
-    {
-
+    if(access(filename.c_str(),F_OK) == -1){
         if(type == 1)
             root[key] = item;
         else if(type == 2)
             root[key].append(item);
-
         Json::FastWriter write;
         string strWrite = write.write(root);
-        ofstream ofs;
-        ofs.open(filename);
-        ofs << strWrite;
-        ofs.close();
+
+        //表明不存在
+        ofstream os;
+        os.open(filename, std::ios::out | std::ios::binary);
+        os << strWrite;
+        os.close();
+    }else
+    {
+        ifstream is;
+
+        is.open(filename,std::ios::binary);
+        if(reader.parse(is,root,false))
+        {
+
+            if(type == 1)
+                root[key] = item;
+            else if(type == 2)
+                root[key].append(item);
+
+            Json::FastWriter write;
+            string strWrite = write.write(root);
+            ofstream ofs;
+            ofs.open(filename);
+            ofs << strWrite;
+            ofs.close();
+        }
+        is.close();
     }
-    is.close();
+
 }
 
 void FC_Message_Handle::update_json_like_data(const string& item,const string& key)

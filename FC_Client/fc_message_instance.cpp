@@ -3,6 +3,8 @@
 #include <QDebug>
 #include <vector>
 #include <string>
+#include <json/json.h>
+#include <fc_message.h>
 
 //==============================================
 //  public function
@@ -50,13 +52,40 @@ void FC_Message_Instance::recv(QVector<QString> content){//socket to display
 
 void FC_Message_Instance::add_msg_to_socket(QVector<QString> content)
 {
+    Json::Value root;
+    //生成id
+    time_t nowtime;
+    struct tm* p;;
+    time(&nowtime);
+    p = localtime(&nowtime);
 
-    std::vector<std::string> msg;
-    msg.push_back(content.at(0).toStdString());
-    msg.push_back(content.at(1).toStdString());
-    msg.push_back(content.at(2).toStdString());
-    msg.push_back(content.at(3).toStdString());
-    this->_client->add_msg_to_socket(msg);
+    char *times = new char;
+    char *m_time = new char;
+    sprintf(m_time,"%02d-%02d %02d:%02d",p->tm_mon+1,p->tm_mday,p->tm_hour,p->tm_min);
+    sprintf(times,"%02d:%02d:%02d:%02d:%02d",p->tm_mon+1,p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
+    root["id"] = content.at(0).toStdString()+":"+times;
+    root["send_id"] = content.at(0).toStdString();
+    root["recv_id"] = content.at(1).toStdString();
+    root["msg_type"] = content.at(4).toStdString();
+    root["msg_content"] = content.at(3).toStdString();
+    root["time"] = m_time;
+    Json::FastWriter write;
+    string str =  write.write(root);
+    FC_Message *msg = new FC_Message();
+    msg->set_message_type(FC_TEXT_MEG);
+    msg->set_body_length(str.size());
+    msg->set_body(str.c_str(),str.size());
+    _client->add_msg_to_socket(msg);
+
+
+    //this->_client->forward_message()
+//    std::vector<std::string> msg;
+//    msg.push_back(content.at(0).toStdString());
+//    msg.push_back(content.at(1).toStdString());
+//    msg.push_back(content.at(2).toStdString());
+//    msg.push_back(content.at(3).toStdString());
+//    this->_client->add_msg_to_socket(msg);
+    //this->_client->forward_message()
 
 }
 

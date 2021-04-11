@@ -19,22 +19,34 @@ void add_json_data(Json::Value item,const string& filename,const string& key)
     Json::Value root;
     ifstream is;
 
-    is.open(filename,std::ios::binary);
-    if(reader.parse(is,root,false))
+    if(access(filename.c_str(),F_OK) == -1)
     {
-
         root[key].append(item);
-
         Json::FastWriter write;
         string strWrite = write.write(root);
-        cout<<strWrite<<endl;
-//        ofstream ofs;
-//        ofs.open(filename);
-//        ofs << strWrite;
-//        ofs.close();
+
+        //表明不存在
+        ofstream os;
+        os.open(filename, std::ios::out | std::ios::binary);
+        os << strWrite;
+        os.close();
+
     }else
     {
-        cout<<"解析失败"<<endl;
+        is.open(filename,std::ios::binary);
+        if(reader.parse(is,root,false))
+        {
+
+            root[key].append(item);
+
+            Json::FastWriter write;
+            string strWrite = write.write(root);
+    //        cout<<strWrite<<endl;
+            ofstream ofs;
+            ofs.open(filename);
+            ofs << strWrite;
+            ofs.close();
+        }
     }
     is.close();
 }

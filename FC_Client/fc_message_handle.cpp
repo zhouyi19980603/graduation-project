@@ -151,24 +151,45 @@ void FC_Message_Handle::handle_body(FC_Message* message){
 
 void FC_Message_Handle::handle_text_msg(FC_Message* msg){
 
-//      qDebug() <<"text message 打印:"<<msg->body();
-    char* w_account = new char[7];
-    memset(w_account,'\0',7);
-    char* m_account =new char[7];
-    memset(m_account,'\0',6);
-    memcpy(w_account,msg->header()+sizeof (unsigned)*2,FC_ACC_LEN);
-    memcpy(m_account,msg->header()+14,FC_ACC_LEN);
-    char *content = msg->body()+12;  //消息内容
-//    std::vector<std::string> vs(3);  //message type
-    std::vector<std::string> vs(4);  //message type
-    qDebug()<<"w_account: "<< w_account;
-    vs.at(0)=w_account;   //消息发送者id
-    vs.at(1)=m_account;   //消息接收者id
-    vs.at(2)=content;     //消息内容
-    vs.at(3) = "0";       //消息type
+    //处理文本消息
+    Json::Value root;
+    Json::Reader reader;
+    if(!reader.parse(msg->body(),root))
+    {
+        std::cout <<"FC_Message_Handle::handle_text_msg(FC_Message* msg)" <<std::endl;
+        exit(0);
+    }
+    string send_id,recv_id,cont,type;
+    send_id = root["send_id"].asString();
+    recv_id = root["recv_id"].asString();
+    cont = root["msg_content"].asString();
+    type = root["msg_type"].asString();
+
+    std::vector<std::string> vs(4);
+    vs.at(0) = send_id;
+    vs.at(1) = recv_id;
+    vs.at(2) = cont;
+    vs.at(3) = type;
+
+//    char* w_account = new char[7];
+//    memset(w_account,'\0',7);
+//    char* m_account =new char[7];
+//    memset(m_account,'\0',6);
+//    memcpy(w_account,msg->header()+sizeof (unsigned)*2,FC_ACC_LEN);
+//    memcpy(m_account,msg->header()+14,FC_ACC_LEN);
+//    char *content = msg->body()+12;  //消息内容
+////    std::vector<std::string> vs(3);  //message type
+//    std::vector<std::string> vs(4);  //message type
+//    qDebug()<<"w_account: "<< w_account;
+//    vs.at(0)=w_account;   //消息发送者id
+//    vs.at(1)=m_account;   //消息接收者id
+//    vs.at(2)=content;     //消息内容
+//    vs.at(3) = "0";       //消息type
+
     this->_client->add_msg_to_display(vs);
-    free(w_account);
-    free(m_account);
+
+//    free(w_account);
+//    free(m_account);
 }
 
 void FC_Message_Handle::
