@@ -13,6 +13,7 @@ struct dynamic
     QString con_image;//path
     QString time;
     QString dyId;//动态的id
+    QString like_text;//点赞的text
 };
 
 class FC_Moments_Model : public QAbstractListModel

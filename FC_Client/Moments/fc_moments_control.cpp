@@ -175,6 +175,44 @@ void FC_Moments_Control::handle_replay_dy(const char *content)
             QString new_id = QString::fromLocal8Bit(each["user_id"].asString().c_str());
             dy.headpath = new_id == _profile->account() ? new_id:  _client->get_item()[each["user_id"].asString()]->heading();
             dy.nickname = new_id == _profile->account() ? _profile->nickname():_client->get_item()[each["user_id"].asString()]->markname()=="" ? _client->get_item()[each["user_id"].asString()]->nickname() : _client->get_item()[each["user_id"].asString()]->markname();
+
+            QString like_text ;
+            if(new_id == _profile->account())
+            {
+                //表明是自己的文章
+                for(auto value: each["likes"])
+                {
+                    string user_id="";
+                    user_id = value.asString();
+                    like_text += user_id ==_profile->account().toStdString() ? _profile->nickname():_client->get_item()[user_id]->markname()=="" ? _client->get_item()[user_id]->nickname() : _client->get_item()[user_id]->markname();
+                    like_text += "、";
+                }
+            }else
+            {
+                for(auto value: each["likes"])
+                {
+
+                    string user_id="";
+                    user_id = value.asString();
+                    //判断是不是自己的id
+                    if(user_id == _profile->account().toStdString())
+                    {
+                        like_text += _profile->nickname();
+                        like_text += "、";
+                        continue;
+                    }
+                    //判断是否存在于自己的好友列表中，存在则显示
+                    auto search = _client->get_item().find(user_id);
+                    if(search != _client->get_item().end())
+                    {
+                        //表明找到了
+                        like_text += new_id ==_profile->account() ? _profile->nickname():_client->get_item()[user_id]->markname()=="" ? _client->get_item()[user_id]->nickname() : _client->get_item()[user_id]->markname();
+                        like_text += "、";
+                    }
+                }
+            }
+            dy.like_text = like_text;
+
             _model->add(dy);
         }
     }else

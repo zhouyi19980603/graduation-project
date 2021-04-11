@@ -597,6 +597,7 @@ void FC_Message_Handle::handle_text_msg(FC_Message* msg){
     char s_account[FC_ACC_LEN];  //保存消息接受者账号
     memcpy(s_account,msg->header()+14,FC_ACC_LEN);  //4+4+6
     char *content = msg->body();
+    //确定好友是否在先在决定是否发送消息
     this->_server->forward_message(string(s_account),msg);
     std::cout<< s_account<<std::endl;
     std::cout<<content<<std::endl;
@@ -712,10 +713,14 @@ void FC_Message_Handle::handle_like_message(const char *content)
         userId = root["userId"].asString();
         userNickname = root["userNick"].asString();
     }
+    //这里的userId指的是点赞的用户id
+    update_json_like_data(userId,dyId);
     //通过dyId，查找对应的authorId，这里就会开始使用redis
-
     _reply = (redisReply*)redisCommand(_content,"hget %s user_id",dyId.c_str());
 
+
+//    add_json_data()
+    //得到点赞消息后存入对应的moments.json中（post_id）
     Subject* moments = new ConcreteMoments ();
 
     moments->clearObserver();
@@ -758,12 +763,11 @@ void FC_Message_Handle::handle_request_dy(const char *content)
     {
         Json::Value item;
         //读取两条信息发出去,消息条数可以自己控制
-        for(int i=2;i<root1[content].size();i++)
+        for(int i=0;i<root1[content].size();i++)
         {
             string postId = root1[content][i]["post_id"].asString();
             std::cout<<"handle_request_dy: "<<postId<<std::endl;
             //查找另一个文件
-            //item[postId] = root2[postId];
             writeRoot["moments"].append(root2[postId]);
         }
 
@@ -832,7 +836,27 @@ void FC_Message_Handle::add_json_data(Json::Value item, const string &filename,c
 
         Json::FastWriter write;
         string strWrite = write.write(root);
-        //cout<<strWrite<<endl;
+        ofstream ofs;
+        ofs.open(filename);
+        ofs << strWrite;
+        ofs.close();
+    }
+    is.close();
+}
+
+void FC_Message_Handle::update_json_like_data(const string& item,const string& key)
+{
+    Json::Reader reader;
+    Json::Value root;
+    ifstream is;
+
+    string filename = "./config/moments.json";
+    is.open(filename,std::ios::binary);
+    if(reader.parse(is,root,false))
+    {
+        root[key]["likes"].append(item);
+        Json::FastWriter write;
+        string strWrite = write.write(root);
         ofstream ofs;
         ofs.open(filename);
         ofs << strWrite;
@@ -910,8 +934,8 @@ string FC_Message_Handle::get_file_path(FC_Message *msg)
     memcpy(m_account,msg->header()+14,FC_ACC_LEN);
     string f1 = m_account;
     string f2 = w_account;
-    string filePath1 = "history/"+f1+".json";
-    string filePath2 = "history/"+f2+".json";
+    string filePath1 = "./history/"+f1+".json";
+    string filePath2 = "./history/"+f2+".json";
 
     store_history(msg,filePath1);    //两个账号各存一份消息
     store_history(msg,filePath2);

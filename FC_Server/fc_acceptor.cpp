@@ -48,11 +48,10 @@ void FC_Acceptor::on_accept(const boost::system::error_code &err/*,tcp::socket p
         exit(err.value());
     }else{
         qDebug() << "accept_arrive";
-        //put this handled by server
         this->_server->handle_connected(this->_connection);
-        //get new socket
+        //得到新的socket
         this->_connection = this->_server->get_connection();
-        //continue accept
+        //继续连接
         start_accept();
     }
 }

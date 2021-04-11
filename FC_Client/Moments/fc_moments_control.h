@@ -25,6 +25,7 @@ public:
     void handle_new_moments(const char* content);
     void handle_like_message(const char* content);
     void handle_replay_dy(const char* content);
+    QString arrange_likes_tex();//处理点赞的text信息
 private:
     FC_Client* _client = nullptr;
     FC_Moments_Model* _model = nullptr;

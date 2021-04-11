@@ -30,6 +30,9 @@ QVariant FC_Moments_Model::data(const QModelIndex &index, int role) const
         return this->_data.at(index.row()).userId;
     else if(role == 6)
         return this->_data.at(index.row()).dyId;
+    else if (role == 7) {
+        return this->_data.at(index.row()).like_text;
+    }
     return QVariant();
 }
 
@@ -48,6 +51,7 @@ QHash<int, QByteArray> FC_Moments_Model::roleNames() const
     _roles[4] = "time";
     _roles[5] = "userid";
     _roles[6] = "dyId";
+    _roles[7] = "like_text";
     return _roles;
 }
 

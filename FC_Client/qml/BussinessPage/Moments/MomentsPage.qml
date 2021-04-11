@@ -233,7 +233,7 @@ Page {
                 anchors.topMargin: 6
                 anchors.left: model_heading.right
                 anchors.leftMargin: 7
-                text:msg.like_text
+                text:like_text
                 visible: likeModule.text!=""
             }
             TextEdit{

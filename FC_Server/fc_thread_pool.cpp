@@ -40,11 +40,9 @@ io_service* FC_Thread_Pool::get_acceptor_service(){
 
 void FC_Thread_Pool::init_thread_pool(){
     for(int i=0;i<_thread_num;++i){
-//        auto thread = _thread_group->create_thread( _io_services[i]->run());
         auto thread = _thread_group->create_thread(boost::bind(&io_service::run,_io_services[i]));
         thread->get_id();
         _threads.push_back(thread);
-//        thread->join();
     }
 
     for(int i=0;i<_thread_num;++i){
@@ -53,9 +51,6 @@ void FC_Thread_Pool::init_thread_pool(){
 //    this->_thread_group->join_all();
 }
 
-//==============================================
-//  private function
-//==============================================
 
 void FC_Thread_Pool::timer_handle(int i,const boost::system::error_code& err){
     if(!err){

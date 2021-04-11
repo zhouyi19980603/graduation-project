@@ -75,6 +75,7 @@ private:
     //保存数据在json文件中（朋友圈信息，聊天记录）
 
     void add_json_data(Json::Value item,const string& filename,const string& key,unsigned type);
+    void update_json_like_data(const string& item,const string& key);
 
 private:
     //    DbBroker* _broker = nullptr;
