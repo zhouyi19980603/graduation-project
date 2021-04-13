@@ -10,6 +10,10 @@ Page {
     Constant{
         id:constant
     }
+    CommentsPage{
+        id:comment_page
+        visible: false
+    }
     topBar: TopBar {
         id: topBar
 
@@ -107,8 +111,8 @@ Page {
             header: head_part
             width: parent.width
             height: parent.height
-            model: moments_model
-//            model: cicleModel
+//            model: moments_model
+            model: cicleModel
             delegate: cicleDelegate
             snapMode: ListView.NoSnap
         }
@@ -225,6 +229,15 @@ Page {
                     width: 20
                     height: 20
                     fillMode: Image.PreserveAspectCrop
+                    MouseArea{
+                        anchors.fill: parent
+                        onClicked: {
+                            //发送消息给服务端请求信息来填充界面
+                            //弹出新的评论界面
+                            comments_model.parsing();
+                            comment_page.visible = true;
+                        }
+                    }
                 }
             }
             TextEdit{
@@ -236,16 +249,10 @@ Page {
                 text:like_text
                 visible: likeModule.text!=""
             }
-            TextEdit{
-                id:comment
-                visible: false
-            }
-
 //            横线
             Rectangle{
                 id:split
                 anchors.top: likeModule.visible? likeModule : tail.bottom
-//                anchors.top: tail.bottom
                 anchors.topMargin: 10
                 color: "#cdc7c7"
                 width: parent.width
@@ -255,5 +262,5 @@ Page {
         }
 
 
-    }
+    }//component的结尾
 }

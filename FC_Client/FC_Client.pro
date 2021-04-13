@@ -24,6 +24,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 # Input
 HEADERS += fc_buddy.h \
+           Moments/fc_comments_listmodel.h \
            Moments/fc_moments_control.h \
            Moments/fc_moments_like.h \
            Moments/fc_moments_listmodel.h \
@@ -48,6 +49,7 @@ HEADERS += fc_buddy.h \
            fc_thread_pool.h
 
 SOURCES += fc_buddy.cpp \
+           Moments/fc_comments_listmodel.cpp \
            Moments/fc_moments_control.cpp \
            Moments/fc_moments_like.cpp \
            Moments/fc_moments_listmodel.cpp \

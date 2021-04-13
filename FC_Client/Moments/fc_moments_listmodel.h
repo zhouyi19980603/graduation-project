@@ -2,6 +2,7 @@
 #define FC_MOMENTS_LISTMODEL_H
 #include <QAbstractListModel>
 #include <QVector>
+#include "fc_comments_listmodel.h"
 
 //一条动态
 struct dynamic
@@ -14,6 +15,7 @@ struct dynamic
     QString time;
     QString dyId;//动态的id
     QString like_text;//点赞的text
+    QString comments;//评论的消息
 };
 
 class FC_Moments_Model : public QAbstractListModel

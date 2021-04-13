@@ -19,6 +19,7 @@ class FC_Message;
 class FC_MessageStatus;
 class FC_Moments_Model;
 class FC_Moments_Control;
+class CommentsModel;
 class LikeMsg;
 
 class FC_Display
@@ -49,6 +50,7 @@ private:
     FC_MessageStatus* _status = nullptr;
     FC_Moments_Model* _moments_model = nullptr;
     FC_Moments_Control* _control = nullptr;
+    CommentsModel* _comments_model = nullptr;
     LikeMsg* _msg = nullptr;
     Buddy* _buddy = nullptr;
 
