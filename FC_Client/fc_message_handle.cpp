@@ -19,11 +19,6 @@
 namespace fs = std::filesystem;
 using namespace std;
 
-//控制类 好友模块的
-
-
-
-
 FC_Message_Handle::FC_Message_Handle(FC_Client *client)
     :_client(client)
 {

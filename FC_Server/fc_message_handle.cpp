@@ -50,6 +50,22 @@ void FC_Message_Handle::redisInit()
     }
 }
 
+void FC_Message_Handle::InitRedisPost(const string &user_id)
+{
+    //从数据库中读取user_id的post_id信息
+    //先通过select 查找到对应的user_id的所有post_id信息
+    DbBroker* db = new DbBroker();
+
+    QSqlQuery qu = db->get_user_post(user_id.c_str());
+    while(qu.next()){
+        string post_id = qu.value(0).toString().toStdString();
+        string user_id = qu.value(0).toString().toStdString();
+
+        _reply = (redisReply*)redisCommand(_content,"hset %s %s %s",post_id.c_str(),"user_id",user_id.c_str());
+        freeReplyObject(_reply);
+    }
+}
+
 FC_Message_Handle::~FC_Message_Handle()
 {
     redisFree(_content);//释放redis的连接
@@ -536,11 +552,12 @@ void FC_Message_Handle::handle_sign_in(const char* s){
         FC_Message* msg = generate_message(FC_SIGN_IN_R,"ok");
         _connection->write(msg);
         this->_server->add_identified(account,this->_connection); //添加在在线列表中
+        //初始化redis中文章信息
+        InitRedisPost(account);
         send_self_msg(account);
         send_friends_lists(account);
-        send_history(account);
-        handle_offlineM(account);
-
+        send_history(account); //发送聊天的历史记录
+        handle_offlineM(account); //处理离线消息
     }else
     {
         FC_Message* msg = generate_message(FC_SIGN_IN_R,"error");

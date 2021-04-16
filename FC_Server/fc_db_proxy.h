@@ -29,6 +29,7 @@ public:
     QSqlQuery get_friends_list();
     QSqlQuery self_query(const QString& ery);
     QSqlQuery get_friends_list(const QString& account);
+    QSqlQuery get_user_post(const QString& account);
     bool update_nick(const QString& acc,const QString& nick);
     bool update_gender(const QString& acc,const QString& sex);
     bool update_mark(const QString& user_id,const QString& friend_id,const QString& mark);
