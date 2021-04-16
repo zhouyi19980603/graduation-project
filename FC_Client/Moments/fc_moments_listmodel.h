@@ -16,6 +16,7 @@ struct dynamic
     QString dyId;//动态的id
     QString like_text;//点赞的text
     QString comments;//评论的消息
+    bool is_like = false;//是否点过赞
 };
 
 class FC_Moments_Model : public QAbstractListModel
@@ -31,8 +32,14 @@ public:
     QHash<int, QByteArray> roleNames() const;
     void clear();
 
+
+    //handle
+    void update_model(const QString& dyId,const QString& content);
+    int getIndex(const QString& dyId);
+
     Q_INVOKABLE void add(dynamic& nic);
     Q_INVOKABLE void add();
+
 private:
     FC_Moments_Model(QObject* parent = nullptr);
     QVector<dynamic> _data;

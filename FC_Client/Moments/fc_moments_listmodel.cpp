@@ -36,6 +36,9 @@ QVariant FC_Moments_Model::data(const QModelIndex &index, int role) const
     else if (role == 8) {
 //        return  this->_data.at(index.row()).comments;
     }
+    else if(role == 9){
+        return this->_data.at(index.row()).is_like;
+    }
     return QVariant();
 }
 
@@ -56,12 +59,34 @@ QHash<int, QByteArray> FC_Moments_Model::roleNames() const
     _roles[6] = "dyId";
     _roles[7] = "like_text";
     _roles[8] = "comments";
+    _roles[9] = "is_like";
     return _roles;
 }
 
 void FC_Moments_Model::clear()
 {
-    _data.clear();
+    beginRemoveRows(QModelIndex(),0,rowCount()-1);
+    _data.erase(_data.begin(),_data.end());
+    endRemoveRows();
+}
+
+void FC_Moments_Model::update_model(const QString &dyId, const QString &content)
+{
+    int index = getIndex(dyId);
+    _data[index].like_text += content;
+}
+
+int FC_Moments_Model::getIndex(const QString &dyId)
+{
+    int index = 0;
+    for(int i=0;i < _data.size();i++)
+    {
+        if(this->_data[i].dyId == dyId)
+        {
+            index = i;break;
+        }
+    }
+    return index;
 }
 
 void FC_Moments_Model::add(dynamic& nic)

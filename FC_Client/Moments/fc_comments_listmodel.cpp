@@ -12,16 +12,6 @@ CommentsModel *CommentsModel::getInstance()
 CommentsModel::CommentsModel(QObject *parent)
     :QAbstractListModel(parent)
 {
-//    Comment comment1,comment2,comment3,comment4;
-//    comment1.name = "张礼";
-//    comment1.content = "还不错嘛";
-//    _data.push_back(comment1);
-//    comment2.name = "李可";
-//    comment2.content = "真的很ok也";
-//    _data.push_back(comment2);
-//    comment3.name = "Throzb";
-//    comment3.content = "谢谢大家";
-//    _data.push_back(comment3);
 
 }
 
@@ -64,66 +54,102 @@ QHash<int, QByteArray> CommentsModel::roleNames() const
     return  _roles;
 }
 
-void CommentsModel::parsing()
-{
-    //从json文件中读取，并获得是添加在那个项中
-    Json::Value root;
-    Json::Reader reader;
-    std::ifstream is;
+//void CommentsModel::parsing()
+//{
+//    //从json文件中读取，并获得是添加在那个项中
+//    Json::Value root;
+//    Json::Reader reader;
+//    std::ifstream is;
 
-    is.open("./config/comments.json",std::ios::binary);
-    if(reader.parse(is,root,false))
-    {
-        //解析到json文件,获得评论表
-        Json::Value ids = root["ids"];
-        for(int i=0;i<ids.size();i++)
-        {
-            Comment com;
-            //从"comments"中获取对应的ids
-            std::string id = ids[i].asString();
-            Json::Value item = root["comments"][id]; //得到对应的评论数据
-            com.id = QString::fromLocal8Bit(item["id"].asCString());
-            com.content = QString::fromLocal8Bit(item["content"].asCString());
-            com.parent_id = QString::fromLocal8Bit(item["parent_id"].asCString());
-            com.name =QString::fromLocal8Bit(item["user_id"].asCString());
-            if(item["parent_id"] == "")
-            {
-                //表明这是一级评论
-                beginInsertRows(QModelIndex(),rowCount(),rowCount());
-                this->_data.push_back(com);
-                endInsertRows();
-            }else
-            {
-                //表明父_id有值，这是一个回复,找到父_id所在的位置
-                int index =0;
-                for(int j=0;j<this->_data.size();j++)
-                {
-                    Comment each = _data[j];
-                    if(each.id.toStdString() == item["parent_id"].asString())
-                    {
-//                        //找到父亲所在的项
-                        index = j+1;
-                        for(int jj=j+1;jj<this->_data.size();jj++)
-                        {
-                            if(_data[jj].parent_id.toStdString() != item["parent_id"].asString()){
-                                index = jj;
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                }
-                beginInsertRows(QModelIndex(),index,index);
-                this->_data.insert(index,com);
-                endInsertRows();
-            }
-        }
-    }else
-    {
-        std::cout<<"解析失败"<<std::endl;
-        exit(0);
-    }
+//    is.open("./config/comments.json",std::ios::binary);
+//    if(reader.parse(is,root,false))
+//    {
+//        //解析到json文件,获得评论表
+//        Json::Value ids = root["ids"];
+//        for(int i=0;i<ids.size();i++)
+//        {
+//            Comment com;
+//            //从"comments"中获取对应的ids
+//            std::string id = ids[i].asString();
+//            Json::Value item = root["comments"][id]; //得到对应的评论数据
+//            com.id = QString::fromLocal8Bit(item["id"].asCString());
+//            com.content = QString::fromLocal8Bit(item["content"].asCString());
+//            com.parent_id = QString::fromLocal8Bit(item["parent_id"].asCString());
+//            com.name =QString::fromLocal8Bit(item["user_id"].asCString());
+//            if(item["parent_id"] == "")
+//            {
+//                //表明这是一级评论
+//                beginInsertRows(QModelIndex(),rowCount(),rowCount());
+//                this->_data.push_back(com);
+//                endInsertRows();
+//            }else
+//            {
+//                //表明父_id有值，这是一个回复,找到父_id所在的位置
+//                int index =0;
+//                for(int j=0;j<this->_data.size();j++)
+//                {
+//                    Comment each = _data[j];
+//                    if(each.id.toStdString() == item["parent_id"].asString())
+//                    {
+////                        //找到父亲所在的项
+//                        index = j+1;
+//                        for(int jj=j+1;jj<this->_data.size();jj++)
+//                        {
+//                            if(_data[jj].parent_id.toStdString() != item["parent_id"].asString()){
+//                                index = jj;
+//                                break;
+//                            }
+//                        }
+//                        break;
+//                    }
+//                }
+//                beginInsertRows(QModelIndex(),index,index);
+//                this->_data.insert(index,com);
+//                endInsertRows();
+//            }
+//        }
+//    }else
+//    {
+//        std::cout<<"解析失败"<<std::endl;
+//        exit(0);
+//    }
+//}
+
+void CommentsModel::clear()
+{
+    _data.clear();
 }
+
+int CommentsModel::getIndex(const std::string &parent_id)
+{
+    int index =0;
+    for(int j=0;j<this->_data.size();j++)
+    {
+        Comment each = _data[j];
+        if(each.id.toStdString() == parent_id)
+        {
+//                        //找到父亲所在的项
+            index = j+1;
+            for(int jj=j+1;jj<this->_data.size();jj++)
+            {
+                if(_data[jj].parent_id.toStdString() != parent_id){
+                    index = jj;
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    return index;
+}
+
+void CommentsModel::add(Comment &cm, int index)
+{
+    beginInsertRows(QModelIndex(),index,index);
+    this->_data.insert(index,cm);
+    endInsertRows();
+}
+
 
 //bool CommentsModel::insertRows(int row, int count, const QModelIndex &parent)
 //{

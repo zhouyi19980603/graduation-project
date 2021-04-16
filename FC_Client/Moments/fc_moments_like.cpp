@@ -32,9 +32,24 @@ void LikeMsg::setTime(const QString &time)
     }
 }
 
+void LikeMsg::setIsLike(const bool &value)
+{
+    if(m_isLike != value )
+    {
+        m_isLike = value;
+        emit isLikeChanged();
+    }else
+        emit isLikeChanged();
+}
+
 QString LikeMsg::like_text() const
 {
     return m_like_text;
+}
+
+bool LikeMsg::isLike() const
+{
+    return m_isLike;
 }
 
 QString LikeMsg::time() const

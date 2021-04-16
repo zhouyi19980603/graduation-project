@@ -3,6 +3,7 @@
 #include <QAbstractListModel>
 #include <QVector>
 #include <QObject>
+#include <iostream>
 
 /**************************************************************
 
@@ -18,6 +19,7 @@ struct Comment{
     QString content;
     QString user_id;//评论的用户id
     QString parent_id;//表明是否为回复
+    QString puser_id;//父结点的user_id
     QString time; //评论的时间
     QString name;//显示的name
 };
@@ -33,7 +35,10 @@ public:
     int rowCount(const  QModelIndex &parent = QModelIndex()) const; //row count
 
     QHash<int, QByteArray> roleNames() const;
-    Q_INVOKABLE void parsing();
+    Q_INVOKABLE void clear();
+
+    int getIndex(const std::string& parent_id);
+    void add(Comment& cm,int index);
    // bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex());
 private:
     CommentsModel(QObject* parent = nullptr);

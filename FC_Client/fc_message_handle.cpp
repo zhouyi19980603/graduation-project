@@ -130,13 +130,20 @@ void FC_Message_Handle::handle_body(FC_Message* message){
         case FC_LIKE:
             _moment_handle->handle_like_message(message->body());
             break;
-        case FC_COMMENT:
+        case FC_REPLY_COMMENTS:
+            _moment_handle->handle_replay_comments(message->body());
             break;
         case FC_NEW_MOMENTS:
             _moment_handle->handle_new_moments(message->body());
             break;
         case FC_REPLY_DY:
             _moment_handle->handle_replay_dy(message->body());
+            break;
+        case FC_COMMENTS_REPLY1:
+            //单纯的回复
+            break;
+        case FC_COMMENTS_REPLY2:
+            //回复的回复，处理格式不同
             break;
         default:
             cout<<"朋友圈没有这样的类型"<<endl;

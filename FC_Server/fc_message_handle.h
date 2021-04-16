@@ -1,4 +1,4 @@
-#ifndef FC_MESSAGE_HANDLE_H
+﻿#ifndef FC_MESSAGE_HANDLE_H
 #define FC_MESSAGE_HANDLE_H
 
 #include <cstdlib>
@@ -55,6 +55,9 @@ public:
     void handle_new_moments(const char* content);
     void handle_like_message(const char* content);
     void handle_request_dy(const char* content);
+    void handle_request_comments(const char* content);
+    void handle_comments_reply1(const char* content);
+    void handle_comments_reply2(const char* content);
 
     //历史记录
     void store_history(FC_Message* msg,const string& path);
@@ -78,6 +81,7 @@ private:
     void store_json_data(const string& item,const string& filename,const string& key);
     void add_json_data(Json::Value item,const string& filename,const string& key,unsigned type);
     void update_json_like_data(const string& item,const string& key);
+    void update_json_data(const string& item,const string& primaryKey,const string& secondKey);
 
 private:
     //    DbBroker* _broker = nullptr;

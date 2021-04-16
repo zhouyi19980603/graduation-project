@@ -142,13 +142,23 @@ void FC_Message_Handle::handle_body(FC_Message* message){
             cout<<"点赞消息"<<endl;
             handle_like_message(message->body());
             break;
-        case FC_COMMENT: //评论
+        case FC_REQUEST_COMMENTS: //评论
+            handle_request_comments(message->body());
             break;
         case FC_NEW_MOMENTS: //发布消息
             handle_new_moments(message->body());
             break;
         case FC_REQUEST_DY:
             handle_request_dy(message->body());
+            break;
+        case FC_COMMENTS_REPLY1:
+            //评论
+            //把评论id写入对应的post_id中，转发给所有的好友，通知他们这个动态有人评论了
+            handle_comments_reply1(message->body());
+            break;
+        case FC_COMMENTS_REPLY2:
+            handle_comments_reply2(message->body());
+            //回复别人的评论
             break;
         default:
             cout<<"朋友圈没有这样的类型"<<endl;
@@ -188,6 +198,7 @@ void FC_Message_Handle::send_self_msg(const string &username)
 
 void FC_Message_Handle::send_friends_lists(const string &username)
 {
+    _server->get_friends_list()[username].clear();
     std::string str ;
     str = make_json(username);
     FC_Message* msg = new FC_Message;
@@ -196,6 +207,7 @@ void FC_Message_Handle::send_friends_lists(const string &username)
     clog << "make_json::body_size():" << str.size() << endl;
     msg->set_body_length(str.size());
     msg->set_body(str.c_str(),str.size());
+    std::cout<<"send_friends_lists: "<<_server->get_friends_list()[username].size()<<std::endl;
     _server->forward_message(username,msg);
 }
 
@@ -235,7 +247,7 @@ string FC_Message_Handle::make_json(string username)
             //            subitem.put("heading",item.value(2).toString().toStdString()); //这里发送的是路径，现在需要对其进行修改
             subitem.put("gender",item.value(4).toString().toStdString());
 
-            _server->get_friends_list()[username].clear();
+            //_server->get_friends_list()[username].clear();
             _server->set_friendsL(username,item.value(0).toString().toStdString());
 
             members.push_back(make_pair("",subitem));
@@ -764,7 +776,8 @@ void FC_Message_Handle::handle_new_moments(const char* content)
         filename = "./config/user_moments.json";
         //保存在user_moments中
         add_json_data(item,filename,acc,2);//2表示数组
-        //添加进redis中
+
+        //添加进redis中（表明文章的作者）
         _reply = (redisReply*)redisCommand(_content,"hset %s %s %s",postId.c_str(),"user_id",acc.c_str());
         freeReplyObject(_reply);
         //在这里去填充观察者
@@ -774,6 +787,8 @@ void FC_Message_Handle::handle_new_moments(const char* content)
         //得到所有的列表
         for(auto each : _server->get_friends_list()[acc])
         {
+            //也要添加进所有的好友中
+            add_json_data(item,filename,each,2);
             Observer* observer = new Viewer (_server,each);
             moments->registerObserver(observer);//注册进去
         }
@@ -798,8 +813,8 @@ void FC_Message_Handle::handle_like_message(const char *content)
     }else
     {
         dyId = root["dyId"].asString();
-        userId = root["userId"].asString();
-        userNickname = root["userNick"].asString();
+        userId = root["userId"].asString(); //点赞的user_id
+        userNickname = root["userNick"].asString(); //点赞的nickname
     }
     //这里的userId指的是点赞的用户id
     update_json_like_data(userId,dyId);
@@ -807,29 +822,48 @@ void FC_Message_Handle::handle_like_message(const char *content)
     _reply = (redisReply*)redisCommand(_content,"hget %s user_id",dyId.c_str());
 
 
-//    add_json_data()
     //得到点赞消息后存入对应的moments.json中（post_id）
-    Subject* moments = new ConcreteMoments ();
 
+    //观察者的放入,（先判断这个帐号是不是当前post的作者，是则为全部好友都添加进去，不是则过滤）
+    Subject* moments = new ConcreteMoments ();
     moments->clearObserver();
     //得到所有的列表
     std::cout<<"handle_like_message:"<<_reply->str<<std::endl;
     std::cout<<_server->get_friends_list()[_reply->str].size()<<std::endl;
-    for(auto each : _server->get_friends_list()[_reply->str])
+    if(userId == _reply->str)
     {
-        Observer* observer = new Viewer (_server,each);
+        for(auto each : _server->get_friends_list()[_reply->str])
+        {
+            Observer* observer = new Viewer (_server,each);
+            moments->registerObserver(observer);//注册进去
+        }
+    }else
+    {
+        for(auto each : _server->get_friends_list()[_reply->str])
+        {
+            if(each != userId)
+            {
+                Observer* observer = new Viewer (_server,each);
+                moments->registerObserver(observer);//注册进去
+            }
+        }
+        //把自己也注册进去
+        Observer* observer = new Viewer (_server,_reply->str);
         moments->registerObserver(observer);//注册进去
     }
-    moments->setContent(userNickname,FC_LIKE);//只传送nickname进去
+
+    moments->setContent(content,FC_LIKE);//只传送nickname进去
     //找到user_id向user_id发送通知有人点赞（这里面进行处理），向user_id的所有好友发送这个点赞通知
     //_reply->str;//得到对应的值user_id,在里面加一个对应的类型即可
 }
 
 void FC_Message_Handle::handle_request_dy(const char *content)
 {
+    //读取数据库中的信息去填充，redis
     //得到userid，现在所在的content就是userid，通过userid，找到好有,发送10条过去
     //从json中读取来放在redis中
     //先读取user_moments中的内容
+    //在这里需要填充redis中的信息
     Json::Reader reader1,reader2;
     Json::Value root1,root2;
     string filename1 = "./config/user_moments.json";
@@ -854,6 +888,9 @@ void FC_Message_Handle::handle_request_dy(const char *content)
         for(int i=0;i<root1[content].size();i++)
         {
             string postId = root1[content][i]["post_id"].asString();
+            //_reply = (redisReply*)redisCommand(_content,"hset %s %s %s",postId.c_str(), "user_id",content);
+            //freeReplyObject(_reply);
+
             std::cout<<"handle_request_dy: "<<postId<<std::endl;
             //查找另一个文件
             writeRoot["moments"].append(root2[postId]);
@@ -865,6 +902,163 @@ void FC_Message_Handle::handle_request_dy(const char *content)
     this->_connection->write(message);
     is1.close();
     is2.close();
+}
+
+void FC_Message_Handle::handle_request_comments(const char *content)
+{
+    //先读取comments中取得到文章对应的所有id
+    Json::Reader reader1,reader2;
+    Json::Value root1,root2;
+    string filename1 = "./config/moments.json";
+    string filename2 = "./config/comments.json";
+    ifstream is1,is2;
+    is1.open(filename1,std::ios::binary);
+    is2.open(filename2,std::ios::binary);
+
+    //写过客户端
+    Json::FastWriter write;
+    Json::Value writeRoot,value;
+    if(!reader1.parse(is1,root1) || !reader2.parse(is2,root2))
+    {
+        cout<<"reader解析失败"<<endl;
+        exit(0);
+    }
+
+    Json::Value ids;
+    ids = root1[content]["comments"];
+    Json::Value comments;
+    //content中为post_id的内容
+    for(int i=0;i<ids.size();i++)
+    {
+        std::string id = ids[i].asString();
+        comments[id] = root2[id];
+    }
+    writeRoot["ids"] = ids;
+    writeRoot["comments"] = comments;
+
+    string contents = write.write(writeRoot);
+    FC_Message* message = generate_message(FC_REPLY_COMMENTS,contents.c_str());
+    this->_connection->write(message);
+    is1.close();
+    is2.close();
+}
+
+void FC_Message_Handle::handle_comments_reply1(const char *content)
+{
+    //处理简单的评论信息，保存在数据库中，这里暂时不考虑发不发送给离线好友
+    Json::Reader reader;
+    Json::Value root;
+
+    if(reader.parse(content,root))
+    {
+        //解析数据,先获得所有的数据
+        string id,name,content,post_id,user_id,parent_id,time,puser_id;
+        id = root["id"].asString();
+        name = root["name"].asString();
+        content = root["content"].asString();
+        post_id = root["post_id"].asString();
+        user_id = root["user_id"].asString(); //指的是评论人的user_id
+        parent_id = root["parent_id"].asString();
+        time = root["time"].asString();
+        puser_id = root["puser_id"].asString();
+        //通过post_id放入对应的post中
+        update_json_data(id,post_id,"comments");
+        //在放入文件comments.json中,键为id,值为root
+        add_json_data(root,"./config/comments.json",id,1);
+        //发送给好友
+        //通过查询redis得到该post_id的user_id(作者)是谁
+        _reply = (redisReply*)redisCommand(_content,"hget %s user_id",post_id.c_str());
+
+
+
+        Subject* moments = new ConcreteMoments ();
+
+        moments->clearObserver();
+
+        if(user_id == _reply->str)
+        {
+            for(auto each : _server->get_friends_list()[_reply->str])
+            {
+                Observer* observer = new Viewer (_server,each);
+                moments->registerObserver(observer);//注册进去
+            }
+        }else
+        {
+            for(auto each : _server->get_friends_list()[_reply->str])
+            {
+                if(each != user_id)
+                {
+                    Observer* observer = new Viewer (_server,each);
+                    moments->registerObserver(observer);//注册进去
+                }
+            }
+            //把自己也注册进去
+            Observer* observer = new Viewer (_server,_reply->str);
+            moments->registerObserver(observer);//注册进去
+        }
+
+        moments->setContent(content,FC_COMMENTS_REPLY1);
+        freeReplyObject(_reply);
+    }
+
+}
+
+void FC_Message_Handle::handle_comments_reply2(const char *content)
+{
+    //评论的评论
+    //处理简单的评论信息，保存在数据库中，这里暂时不考虑发不发送给离线好友
+    Json::Reader reader;
+    Json::Value root;
+
+    if(reader.parse(content,root))
+    {
+        //解析数据,先获得所有的数据
+        string id,name,content,post_id,user_id,parent_id,time,puser_id;
+        id = root["id"].asString();
+        name = root["name"].asString();
+        content = root["content"].asString();
+        post_id = root["post_id"].asString();
+        user_id = root["user_id"].asString(); //指的是评论人的user_id
+        parent_id = root["parent_id"].asString();
+        time = root["time"].asString();
+        puser_id = root["puser_id"].asString();
+        //通过post_id放入对应的post中
+        update_json_data(id,post_id,"comments");
+        //在放入文件comments.json中,键为id,值为root
+        add_json_data(root,"./config/comments.json",id,1);
+        //发送给好友
+        //通过查询redis得到该post_id的user_id(作者)是谁
+        _reply = (redisReply*)redisCommand(_content,"hget %s user_id",post_id.c_str());
+
+
+        //这里应该判断下是自己给自己评论，还是好友给自己评论，如果是自己给自己评论，应该发给所有好友，如果是好友给自己评论，应该发给除了这个好友的所有好友，以及自己
+        Subject* moments = new ConcreteMoments ();
+
+        moments->clearObserver();
+        if(user_id == _reply->str)
+        {
+            for(auto each : _server->get_friends_list()[_reply->str])
+            {
+                Observer* observer = new Viewer (_server,each);
+                moments->registerObserver(observer);//注册进去
+            }
+        }else
+        {
+            for(auto each : _server->get_friends_list()[_reply->str])
+            {
+                if(each != user_id)
+                {
+                    Observer* observer = new Viewer (_server,each);
+                    moments->registerObserver(observer);//注册进去
+                }
+            }
+            //把自己也注册进去
+            Observer* observer = new Viewer (_server,_reply->str);
+            moments->registerObserver(observer);//注册进去
+        }
+        moments->setContent(content,FC_COMMENTS_REPLY2);
+        freeReplyObject(_reply);
+    }
 }
 
 std::string FC_Message_Handle::handle_user_head(const string &filepath)
@@ -995,6 +1189,27 @@ void FC_Message_Handle::update_json_like_data(const string& item,const string& k
     if(reader.parse(is,root,false))
     {
         root[key]["likes"].append(item);
+        Json::FastWriter write;
+        string strWrite = write.write(root);
+        ofstream ofs;
+        ofs.open(filename);
+        ofs << strWrite;
+        ofs.close();
+    }
+    is.close();
+}
+
+void FC_Message_Handle::update_json_data(const string &item, const string &primaryKey, const string &secondKey)
+{
+    Json::Reader reader;
+    Json::Value root;
+    ifstream is;
+
+    string filename = "./config/moments.json";
+    is.open(filename,std::ios::binary);
+    if(reader.parse(is,root,false))
+    {
+        root[primaryKey][secondKey].append(item);
         Json::FastWriter write;
         string strWrite = write.write(root);
         ofstream ofs;

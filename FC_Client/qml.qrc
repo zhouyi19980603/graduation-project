@@ -168,5 +168,6 @@
         <file>qml/resource/icons/label-icons/like-1.png</file>
         <file>qml/BussinessPage/Moments/exam.qml</file>
         <file>qml/BussinessPage/Moments/CommentsPage.qml</file>
+        <file>qml/resource/icons/label-icons/like-2.png</file>
     </qresource>
 </RCC>

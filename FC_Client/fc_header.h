@@ -59,6 +59,10 @@
 #define FC_NEW_MOMENTS          unsigned(FC_MOMENTS | 1<<3)       //新的动态信息
 #define FC_REQUEST_DY           unsigned(FC_MOMENTS | 1<<4)        //请求动态信息,刷新
 #define FC_REPLY_DY             unsigned(FC_MOMENTS | 1<<5)        //服务端回复刷新的动态消息
+#define FC_COMMENTS_REPLY1      unsigned(FC_MOMENTS | 1<<6)        //评论动态
+#define FC_COMMENTS_REPLY2      unsigned(FC_MOMENTS | 1<<7)         //评论好友的评论
+#define FC_REQUEST_COMMENTS     unsigned(FC_MOMENTS | 1<<8)         //请求刷新评论信息
+#define FC_REPLY_COMMENTS       unsigned(FC_MOMENTS | 1<<9)
 
 
 //part four -- dynamic about

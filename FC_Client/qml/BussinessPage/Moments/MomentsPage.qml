@@ -10,10 +10,6 @@ Page {
     Constant{
         id:constant
     }
-    CommentsPage{
-        id:comment_page
-        visible: false
-    }
     topBar: TopBar {
         id: topBar
 
@@ -111,8 +107,8 @@ Page {
             header: head_part
             width: parent.width
             height: parent.height
-//            model: moments_model
-            model: cicleModel
+            model: moments_model
+//            model: cicleModel
             delegate: cicleDelegate
             snapMode: ListView.NoSnap
         }
@@ -205,7 +201,7 @@ Page {
                 }
                 Image {
                     id: like
-                    source:constant.momentsLikeIcon
+                    source:is_like ? constant.momentsLikeIconed : constant.momentsLikeIcon;
                     anchors.right: parent.right
                     anchors.rightMargin: parent.width/3
                     width: 20
@@ -214,7 +210,10 @@ Page {
                     MouseArea{
                         anchors.fill: parent
                         onClicked:{
-                            moments_control.like(dyId);
+                            is_like = true;
+                            if(like.source == constant.momentsLikeIcon)
+                                moments_control.like(dyId);
+                            like.source = constant.momentsLikeIconed;//以及点赞
                             //likeModule.text =  profilemsg.nickname
                             //console.log(profilemsg.nickname)//显示自己的昵称就可
                         }
@@ -234,8 +233,14 @@ Page {
                         onClicked: {
                             //发送消息给服务端请求信息来填充界面
                             //弹出新的评论界面
-                            comments_model.parsing();
-                            comment_page.visible = true;
+                            var component = Qt.createComponent("CommentsPage.qml");
+                            if(component.status === Component.Ready){
+                                var object=component.createObject(cicle);
+                                //可以修改对方的值
+                                object.postId = dyId;
+                            }
+//                            moments_control.parsing();
+                            moments_control.request_post_comments_data(dyId);
                         }
                     }
                 }
