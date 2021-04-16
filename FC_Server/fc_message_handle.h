@@ -18,6 +18,7 @@ class FC_Message_Handle
 public:
     FC_Message_Handle(FC_Server* server,FC_Connection *connection );
     void redisInit();
+    void InitRedisPost(const string& user_id);
 
     ~FC_Message_Handle();
     //handle recv message

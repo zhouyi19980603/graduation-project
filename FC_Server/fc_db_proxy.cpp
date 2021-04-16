@@ -51,6 +51,12 @@ QSqlQuery DbBroker::get_friends_list(const QString &account)
     return db->query(query);//返回登录用户的好友列表
 }
 
+QSqlQuery DbBroker::get_user_post(const QString &account)
+{
+    QString query = "select* from fc_post where user_id='"+account+"'";
+    return db->query(query);
+}
+
 bool DbBroker::update_nick(const QString &acc, const QString &nick)
 {
     //update user_message_info set nickname='LOVE' where account = '@12345';
