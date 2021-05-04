@@ -39,6 +39,9 @@ QVariant FC_Moments_Model::data(const QModelIndex &index, int role) const
     else if(role == 9){
         return this->_data.at(index.row()).is_like;
     }
+    else if (role == 10) {
+        return  this->_data.at(index.row()).commentsNum;
+    }
     return QVariant();
 }
 
@@ -60,6 +63,7 @@ QHash<int, QByteArray> FC_Moments_Model::roleNames() const
     _roles[7] = "like_text";
     _roles[8] = "comments";
     _roles[9] = "is_like";
+    _roles[10] = "comNum";
     return _roles;
 }
 
@@ -73,7 +77,9 @@ void FC_Moments_Model::clear()
 void FC_Moments_Model::update_model(const QString &dyId, const QString &content)
 {
     int index = getIndex(dyId);
-    _data[index].like_text += content;
+    _data[index].is_like = !_data[index].is_like;
+//    _data[index].like_text += content;
+    emit update_mess();
 }
 
 int FC_Moments_Model::getIndex(const QString &dyId)
@@ -92,8 +98,10 @@ int FC_Moments_Model::getIndex(const QString &dyId)
 void FC_Moments_Model::add(dynamic& nic)
 {
     beginInsertRows(QModelIndex(),rowCount(),rowCount());
-    std::cout<<"进来了"<<std::endl;
+//    beginInsertRows(QModelIndex(),0,0);
+//    std::cout<<"进来了"<<std::endl;
     this->_data.push_back(nic);
+//    this->_data.insert(0,nic);
     endInsertRows();
 }
 
@@ -108,4 +116,5 @@ void FC_Moments_Model::add()
     one.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
     this->_data.push_back(one);
     endInsertRows();
+    emit update_mess();
 }

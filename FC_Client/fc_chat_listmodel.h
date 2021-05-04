@@ -15,6 +15,14 @@ class FC_Message_Instance;
 class FC_Client;
 class FC_instance_handle;
 
+struct LastMsg{
+    QString account;
+    QString content;
+    QString name;
+    QString heading;
+    QString time;
+};
+
 //<userId,<userName,imagePaht,lastcontent>>
 typedef QHash <QString, QVector<QString>> LastMsgVector;
 
@@ -32,26 +40,11 @@ public:
 
     QHash<int, QByteArray> roleNames() const;
 
-    Q_INVOKABLE void add();
-
-
-//    void handle_last_msg(QVector<QString> content);
-
-    QVector<QString> get_last_msg();
-    void set_last_msg(QVector<QString>);
-
-signals:
-    void update_mess();
-
-
-    //   void test_signal();
+    void add(QVector<QString> item);
 private:
-    bool m_bool;
-    QHash<int, QByteArray> _roles;//store rolename
-    QVector<QVector<QString>> _data; //store message
     FC_Client* _client = nullptr;
-    LastMsgVector _all_last_msg;
-    QVector<QString> _one_last_msg;
+    QHash<QString,int> _hash;//记录这条命令是否出现过，出现者在原来的基础上更改
+    QVector<LastMsg> _data;
 };
 
 #endif // FC_CHAT_LISTMODEL_H

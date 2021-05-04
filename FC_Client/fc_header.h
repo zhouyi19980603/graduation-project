@@ -55,6 +55,7 @@
 //part --dynamic about 动态
 #define FC_MOMENTS              unsigned(1<<28)
 #define FC_LIKE                 unsigned(FC_MOMENTS | 1<<1)       //点赞
+#define FC_NO_LIKE              unsigned(FC_MOMENTS | 1<<10)      //取消点赞
 #define FC_COMMENT              unsigned(FC_MOMENTS | 1<<2)       //评论
 #define FC_NEW_MOMENTS          unsigned(FC_MOMENTS | 1<<3)       //新的动态信息
 #define FC_REQUEST_DY           unsigned(FC_MOMENTS | 1<<4)        //请求动态信息,刷新

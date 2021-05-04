@@ -6,6 +6,7 @@
 #include "fc_buddymodel.h"
 #include "fc_buddyteam.h"
 #include "fc_buddy.h"
+#include "fc_friends_model.h"
 #include <json/json.h>
 #include <QDebug>
 #include <filesystem>
@@ -20,6 +21,7 @@ FC_Friends_Handle::FC_Friends_Handle(FC_Client *client, QObject *parent)
     :QObject(parent),_client(client)
 {
     _model = BuddyModel::getInstance();
+    _fmsModel = FMsgModel::getInstance();
 
 //    _items["@12345"]=nullptr;
 }
@@ -84,6 +86,7 @@ void FC_Friends_Handle::add_friends(const QString &msg)
     message->set_body(body,strlen(body));
 
     free(account);
+    cout<<body<<endl;
     _client->add_msg_to_socket(message);
 }
 
@@ -137,6 +140,7 @@ void FC_Friends_Handle::delete_friend(const QString &team, const QString &item)
         }
     }
 
+    emit _model->teamsChanged(); //发送信号，表明更改过
     //删除本地接口中的好友信息
     for(auto it = _client->get_item().begin();it != _client->get_item().end();)
     {
@@ -152,6 +156,39 @@ void FC_Friends_Handle::delete_friend(const QString &team, const QString &item)
     msg->set_friend_identify(item.toStdString().c_str()); //好友标识
     msg->set_self_identify(_client->getUniqueUserName().c_str()); //个人标识
     _client->add_msg_to_socket(msg);
+}
+
+void FC_Friends_Handle::delete_friend(const string &account)
+{
+    cout<<" 删除好友： delete_friend(const string &account): "<<account<<endl;
+    //删除本地接口中的好友信息
+    for(auto it = _client->get_item().begin();it != _client->get_item().end();)
+    {
+        if(it->first == account)
+            it = _client->get_item().erase(it);
+        else
+            it++;
+    }
+
+    for(int i=0;i<_model->teamCount();i++)
+    {
+        QVector<BuddyItem*>::iterator iter;
+        for(iter = _model->team(i)->get_items().begin();iter != _model->team(i)->get_items().end();)
+        {
+            if((*iter)->account() == QString::fromLocal8Bit(account.c_str()))
+            {
+                iter = _model->team(i)->get_items().erase(iter);
+
+                emit _model->teamsChanged(); //发送信号，表明更改过
+                return;//退出去 不进行其他循环
+            }else
+            {
+                iter++;
+            }
+        }
+
+    }
+
 }
 
 void FC_Friends_Handle::validation_request(const QString &result)
@@ -195,7 +232,8 @@ void FC_Friends_Handle::validation_request(const QString &result)
         message->set_self_identify(stringTochar(_client->getUniqueUserName()));//自己标识
         message->set_core_body(status,strlen(status));
         free(status);
-        _client->add_msg_to_socket(message);
+        cout<<"message->body()"<<message->body()<<endl;
+//        _client->add_msg_to_socket(message);
     }else
     {
         qDebug()<<"不同意添加为好友";
@@ -394,12 +432,19 @@ void FC_Friends_Handle::add_friends_show(const string &msg)
 
     string path = "file://"+p.string()+"/assert/"+acc+".jpg";
 
+    FMsg fmsg;
+    fmsg.name = QString::fromLocal8Bit(nick.c_str());
+    fmsg.account = QString::fromLocal8Bit(acc.c_str());
+    fmsg.heading = QString::fromLocal8Bit(path.c_str());
+    fmsg.content = "ignore";
 
-    Buddy *buddy = Buddy::getInstance();
-    buddy->setAccount(QString::fromLocal8Bit(acc.c_str()));
-    buddy->setNickname(QString::fromLocal8Bit(nick.c_str()));
-    buddy->setHeading(QString::fromLocal8Bit(path.c_str())); //设置了相应的数据
-    buddy->setValue("1"); //直接传入1目前,表明有数据
+    _fmsModel->insert(fmsg);
+
+//    Buddy *buddy = Buddy::getInstance();
+//    buddy->setAccount(QString::fromLocal8Bit(acc.c_str()));
+//    buddy->setNickname(QString::fromLocal8Bit(nick.c_str()));
+//    buddy->setHeading(QString::fromLocal8Bit(path.c_str())); //设置了相应的数据
+//    buddy->setValue("1"); //直接传入1目前,表明有数据
 }
 
 char *FC_Friends_Handle::text_content(const char *account, const char *pass)

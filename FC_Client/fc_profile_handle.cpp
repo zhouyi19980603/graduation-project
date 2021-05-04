@@ -64,6 +64,7 @@ void FC_Profile::login(const QString &userAcount, const QString &password)
 
     free(account);
     free(pass);
+    qDebug()<<"准备发送给服务端"<<"\n";
     _client->add_msg_to_socket(message);
 }
 

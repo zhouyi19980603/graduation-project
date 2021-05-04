@@ -42,13 +42,14 @@ std::string FC_Moments_Control::getCurrentTime()
     return  m_time;
 }
 
-void FC_Moments_Control::publish_dynamic()
+void FC_Moments_Control::publish_dynamic(const QString& text,const QString& image)
 {
     dynamic one;
     one.headpath = _profile->heading(); //个人信息的头像
     one.nickname = _profile->nickname(); //个人信息的网名
-    one.con_text = "夜阑卧听风吹雨。";
-    //one.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
+    one.con_text = text;
+//    one.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
+    one.con_image = image;
     //这里会产生一个dyId
     //朋友圈id的产生，当前的时间
     time_t nowtime;
@@ -61,6 +62,7 @@ void FC_Moments_Control::publish_dynamic()
     sprintf(m_time,"%02d-%02d %02d:%02d",p->tm_mon+1,p->tm_mday,p->tm_hour,p->tm_min);
     sprintf(times,"%02d:%02d:%02d:%02d:%02d",p->tm_mon+1,p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
 
+//    one.con_image = "/run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
     one.time = m_time;//得到时间
     one.dyId = _profile->account()+":"+times;//得到当前id
 
@@ -69,36 +71,23 @@ void FC_Moments_Control::publish_dynamic()
     //写成json文件发送出去
     _model->add(one);
 
-    string path = "/run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
 
+//    string path = "/run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
 
+    string path="";
+    if(image !="")
+        path = _client->handle_user_head(image.toStdString().substr(7));
 
     ptree writeroot;
     writeroot.put("dyId",one.dyId.toStdString());
     writeroot.put("userId",_client->getUniqueUserName());
-    writeroot.put("con_text","夜阑卧听风吹雨。");
-    writeroot.put("con_image","image");
-    //    writeroot.put("con_image",_client->handle_user_head(path));
+    writeroot.put("con_text",text.toStdString());
+    writeroot.put("con_image",path);
     writeroot.put("time",m_time);
     std::stringstream ss;
     boost::property_tree::write_json(ss,writeroot);
 
     string content = ss.str();
-
-    //    Json::Value root;
-    //    Json::FastWriter write;
-
-    //    root["userId"] = _client->getUniqueUserName();
-    //    root["con_text"] = "夜阑卧听风吹雨。";
-    ////    string path = "/run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
-    //    string path="/run/media/root/linux_data/FC_IM/build-FC_Client_ran-Desktop_Qt_5_14_0_GCC_64bit-Debug/assert/323813.jpg";
-
-    //    root["con_image"] = _client->handle_user_head(path);
-
-    ////    std::cout<<_client->handle_user_head(path).size()<<std::endl;
-
-
-    //    string content = write.write(root);
 
     FC_Message* fc_message = new FC_Message;
     fc_message->set_message_type(FC_NEW_MOMENTS);
@@ -109,8 +98,9 @@ void FC_Moments_Control::publish_dynamic()
 
 }
 //点赞发送给服务端
-void FC_Moments_Control::like(QString id)
+void FC_Moments_Control::like(bool is_like,QString id)
 {
+    std::cout<<"点赞: "<<id.toStdString()<<std::endl;
     Json::Value root;
     root["dyId"] = id.toStdString();
     root["userId"] = _profile->account().toStdString();
@@ -120,11 +110,14 @@ void FC_Moments_Control::like(QString id)
     //_msg->setLike_text(newText);
 //    QString newText = _msg->like_text()==""?_profile->nickname(): _msg->like_text()+"、"+_profile->nickname();
 
+    //更改当前动态index中like的值
     QString newText = _profile->nickname();
     _model->update_model(id,newText);
+
     Json::FastWriter write;
     string content = write.write(root);
-    FC_Message* message =  FC_Message_Handle::generate_message(FC_LIKE,content.c_str());
+    unsigned type = (is_like==false ? FC_LIKE : FC_NO_LIKE);
+    FC_Message* message =  FC_Message_Handle::generate_message(type,content.c_str());
     //更新当前的点赞
     _client->add_msg_to_socket(message);
 }
@@ -249,12 +242,20 @@ void FC_Moments_Control::send_comment(QVector<QString> con)
         cm.puser_id = puser_id.c_str();
         cm.parent_id = con.at(4);
         cm.name = _profile->nickname() + " 回复 ";
-        cm.name += _client->get_item()[puser_id]->markname() == ""? _client->get_item()[puser_id]->nickname() : _client->get_item()[puser_id]->markname();
-        std::cout<< "cm.name"<<cm.name.toStdString() << std::endl;
+        auto serach = _client->get_item().find(puser_id);
+        if(serach == _client->get_item().end())
+        {
+            //表明这个人不是好友
+            cm.name = cm.name + con.at(3);
+        }else
+        {
+            cm.name += _client->get_item()[puser_id]->markname() == ""? _client->get_item()[puser_id]->nickname() : _client->get_item()[puser_id]->markname();
+        }
+//        std::cout<< "cm.name"<<cm.name.toStdString() << std::endl;
         msg_type = FC_COMMENTS_REPLY2;
     }else
     {
-        cm.name = _profile->nickname() + " 回复 "; //这里为1
+        cm.name = _profile->nickname(); //这里为1
         cm.puser_id = "";
         cm.parent_id = "";
         msg_type = FC_COMMENTS_REPLY1;
@@ -282,8 +283,9 @@ void FC_Moments_Control::send_comment(QVector<QString> con)
     Json::FastWriter write;
     string content = write.write(root);
 
+    std::cout<<"content"<<content<<std::endl;
     FC_Message* message =  FC_Message_Handle::generate_message(msg_type,content.c_str());
-//    _client->add_msg_to_socket(message);
+    _client->add_msg_to_socket(message);
 }
 
 
@@ -307,12 +309,30 @@ void FC_Moments_Control::handle_new_moments(const char* content)
     nic.dyId = QString::fromLocal8Bit(dyId.c_str());
     nic.userId = QString::fromLocal8Bit(id.c_str());
     nic.con_text = QString::fromLocal8Bit(text.c_str());
-
-    //nic.con_image = QString::fromLocal8Bit(_client->save_image(image).c_str());
+//    nic.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
+    if(image == "")
+        nic.con_image = "";
+    else
+        nic.con_image = QString::fromLocal8Bit(_client->save_image(image).c_str());
     nic.headpath = _client->get_item()[id]->heading();
     nic.nickname = _client->get_item()[id]->markname()=="" ? _client->get_item()[id]->nickname() : _client->get_item()[id]->markname();
     std::cout<<"FC_Moments_Control::handle_new_moments"<<std::endl;
     nic.time = QString::fromLocal8Bit(time.c_str());
+
+//    Json::FastWriter write;
+//    Json::Value item;
+//    item["dyId"] = nic.dyId.toStdString();
+//    item["time"] =nic.time.toStdString();
+//    item["userid"] = nic.userId.toStdString();
+//    item["content_text"] = nic.con_text.toStdString();
+//    item["content_image"] = nic.con_image.toStdString();
+//    item["heading"] = nic.headpath.toStdString();
+//    item["nickname"] = nic.nickname.toStdString();
+//    item["is_like"] = nic.is_like;
+//    item["like_text"] = nic.like_text.toStdString();
+//    write.write(item);
+//    std::cout<<nic.dyId.toStdString()<<" "<<nic.con_text.toStdString()<<std::endl;
+//    std::cout<< "_model->getIndex(nic.dyId)"<<_model->getIndex(nic.dyId)<<std::endl;
     _model->add(nic);
 }
 
@@ -346,26 +366,29 @@ void FC_Moments_Control::handle_like_message(const char *content)
 
 void FC_Moments_Control::handle_replay_dy(const char *content)
 {
-    std::cout<<"FC_Moments_Control::handle_replay_dy"<<content<<std::endl;
+//    std::cout<<"FC_Moments_Control::handle_replay_dy"<<content<<std::endl;
     _model->clear();//清空model
     Json::Reader reader;
-    Json::Value root;
+    Json::Value root,allRoot;
     //格式为"moments":[{},{},{}]
     if(reader.parse(content,root))
     {
-        dynamic dy;
+
         //解析成功
         for(auto each: root["moments"])
         {
+            dynamic dy;
             dy.dyId = QString::fromLocal8Bit(each["post_id"].asString().c_str());
             dy.time = QString::fromLocal8Bit(each["time"].asString().c_str());
             dy.userId = QString::fromLocal8Bit(each["user_id"].asString().c_str());
             dy.con_text = QString::fromLocal8Bit(each["con_text"].asCString());
-            dy.con_image = QString::fromLocal8Bit(each["con_image"].asCString());
+            dy.con_image = "file:///run/media/root/linux_data/FC_IM/FC_Client/qml/BussinessPage/Moments/one.jpg";
+//            dy.con_image = QString::fromLocal8Bit(each["con_image"].asCString());
             QString new_id = QString::fromLocal8Bit(each["user_id"].asString().c_str());
-            dy.headpath = new_id == _profile->account() ? new_id:  _client->get_item()[each["user_id"].asString()]->heading();
+            dy.headpath = new_id == _profile->account() ? _profile->heading():  _client->get_item()[each["user_id"].asString()]->heading();
             dy.nickname = new_id == _profile->account() ? _profile->nickname():_client->get_item()[each["user_id"].asString()]->markname()=="" ? _client->get_item()[each["user_id"].asString()]->nickname() : _client->get_item()[each["user_id"].asString()]->markname();
 
+            dy.commentsNum = each["comments"].size();//记录大小
             QString like_text ;
             if(new_id == _profile->account())
             {
@@ -374,10 +397,14 @@ void FC_Moments_Control::handle_replay_dy(const char *content)
                 {
                     string user_id="";
                     user_id = value.asString();
-                    if(user_id == _profile->account().toStdString())
+                    if(user_id == _profile->account().toStdString()){
                         dy.is_like = true;
-                    like_text += user_id ==_profile->account().toStdString() ? _profile->nickname():_client->get_item()[user_id]->markname()=="" ? _client->get_item()[user_id]->nickname() : _client->get_item()[user_id]->markname();
-                    like_text += "、";
+                        std::cout<<"这是喜欢哟"<<std::endl;
+                    }
+
+
+//                    like_text += user_id ==_profile->account().toStdString() ? _profile->nickname():_client->get_item()[user_id]->markname()=="" ? _client->get_item()[user_id]->nickname() : _client->get_item()[user_id]->markname();
+//                    like_text += "、";
                 }
             }else
             {
@@ -407,8 +434,23 @@ void FC_Moments_Control::handle_replay_dy(const char *content)
             }
             dy.like_text = like_text;
 
+//            Json::Value item;
+//            item["dyId"] = dy.dyId.toStdString();
+//            item["time"] =dy.time.toStdString();
+//            item["userid"] = dy.userId.toStdString();
+//            item["content_text"] = dy.con_text.toStdString();
+//            item["content_image"] = dy.con_image.toStdString();
+//            item["heading"] = dy.headpath.toStdString();
+//            item["nickname"] = dy.nickname.toStdString();
+//            item["is_like"] = dy.is_like;
+//            item["like_text"] = dy.like_text.toStdString();
+//            allRoot.append(item);
+
             _model->add(dy);
         }
+//        Json::FastWriter write;
+//        string content =  write.write(allRoot);
+//        emit _model->replay_dy(QString::fromLocal8Bit(content.c_str()));
     }else
     {
         std::cout<<"解析出错"<<std::endl;
@@ -420,8 +462,10 @@ void FC_Moments_Control::handle_replay_comments(const char *content)
 {
     _comment_model->clear();
     //从json文件中读取，并获得是添加在那个项中
-    Json::Value root;
+    Json::Value root,writeRoot;
     Json::Reader reader;
+
+    Json::FastWriter write;
 
     if(reader.parse(content,root))
     {
@@ -519,13 +563,30 @@ void FC_Moments_Control::handle_replay_comments(const char *content)
                 _comment_model->add(com,index);
                 std::cout<<"index: :"<<index<<std::endl;
             }
+
+//            Json::Value itemV;
+//            itemV["id"] = com.id.toStdString();
+//            itemV["name"] = com.name.toStdString();//name不用发送过去可以重新组装
+//            itemV["content"] = com.content.toStdString();
+//            itemV["post_id"] = com.post_id.toStdString();
+//            itemV["user_id"] = com.user_id.toStdString();
+//            itemV["parent_id"] = com.parent_id.toStdString();
+//            itemV["time"] = com.time.toStdString();
+//            itemV["puser_id"] = com.puser_id.toStdString();
+//            writeRoot.append(itemV);
+//            emit comments();
         }
+//        string datas = write.write(writeRoot);
+//        emit _comment_model->comment_mess();
+//        emit comments();
+//        emit comments_data(QString::fromLocal8Bit(datas.c_str()));
+//        std::cout<<"datas"<<datas<<std::endl;
     }else
     {
         std::cout<<"解析失败"<<std::endl;
         exit(0);
     }
-    std::cout<<"_comment_model->rowCount()"<<_comment_model->rowCount()<<std::endl;
+    std::cout<<"_comment_model->rowCount(): "<<_comment_model->rowCount()<<std::endl;
 
 }
 
@@ -534,7 +595,6 @@ void FC_Moments_Control::handle_comment_reply(const char *content, unsigned type
     //不同的类型，处理方式不一样(1 普通回复，2 回复的回复)
     Json::Reader reader;
     Json::Value root;
-
 
     if(reader.parse(content,root))
     {
@@ -575,8 +635,12 @@ void FC_Moments_Control::handle_comment_reply(const char *content, unsigned type
 
             }
             _comment_model->add(com,_comment_model->rowCount());
+            std::cout<<"添加了一个数据: "<<_comment_model->rowCount()<<std::endl;
+            std::cout << com.content.toStdString() <<" "<<com.time.toStdString() <<" "<<com.name.toStdString()<<std::endl;
+
         }else if (type == 2)
         {
+            std::cout<<"类型是2"<<std::endl;
             //这里要处理
 
             //找存放的位置
@@ -586,24 +650,40 @@ void FC_Moments_Control::handle_comment_reply(const char *content, unsigned type
             if(serach != _client->get_item().end())
             {
                 //是好友
-                com.name = _client->get_item()[user_id]->markname() == "" ? _client->get_item()[user_id]->nickname() : _client->get_item()[user_id]->markname();
+                com.name = _client->get_item()[user_id]->markname() == "" ? _client->get_item()[user_id]->nickname() : _client->get_item()[user_id]->markname() + " 回复 ";
                 if(serach2 == _client->get_item().end())
-                    com.name += com.puser_id;
+                {
+                    //没有找到，判断用户是不是自己
+                    if(com.puser_id == _profile->account())
+                    {
+                        //表明是自己
+                        com.name += _profile->nickname();
+                    }else
+                        com.name += com.puser_id;
+                }
                 else
                     com.name += com.name += _client->get_item()[puser_id]->markname() == "" ? _client->get_item()[puser_id]->nickname() : _client->get_item()[puser_id]->markname();
             }else
             {
+                //user_id不可能是自己
                com.name = com.user_id + " 回复 ";
                if(serach2 == _client->get_item().end())
                    com.name += com.puser_id;
                else
                    com.name += _client->get_item()[puser_id]->markname() == "" ? _client->get_item()[puser_id]->nickname() : _client->get_item()[puser_id]->markname();
             }
+//            std::cout<<"_comment_model->rowCount() ::"<<_comment_model->rowCount()<<std::endl;
             int index = _comment_model->getIndex(parent_id);
             _comment_model->add(com,index);
+//            std::cout<<"_comment_model->rowCount() ::"<<_comment_model->rowCount()<<std::endl;
         }
 
+        emit comments();
+        std::cout<<"是否可以发送"<<std::endl;
 
+    }else
+    {
+        std::cout <<"解析失败"<<std::endl;
     }
 
 }

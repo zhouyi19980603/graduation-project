@@ -21,8 +21,8 @@ public:
     ~FC_Moments_Control();
     std::string getCurrentTime();
 
-    Q_INVOKABLE void publish_dynamic();
-    Q_INVOKABLE void like(QString id);
+    Q_INVOKABLE void publish_dynamic(const QString& text,const QString& image);
+    Q_INVOKABLE void like(bool is_like,QString id);
     Q_INVOKABLE void request_dynamic_data();
     Q_INVOKABLE void parsing();
     Q_INVOKABLE void request_post_comments_data(const QString& post_id);
@@ -37,6 +37,10 @@ public:
     void handle_comment_reply(const char* content,unsigned type);
 
     QString arrange_likes_tex();//处理点赞的text信息
+
+signals:
+    void comments_data(QString data);
+    void comments();
 private:
     FC_Client* _client = nullptr;
     FC_Moments_Model* _model = nullptr;

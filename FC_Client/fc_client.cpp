@@ -132,6 +132,7 @@ string FC_Client::save_image(const string &heading)
     }
 
     std::string filepath = "./assert/moments/"+account+".jpg";
+    std::cout<<"save_image(const string &heading)"<<std::endl;
     std::ofstream fout(filepath, std::ios::binary);
     if(!fout)
     {

@@ -4,6 +4,7 @@
 #include <QObject>
 #include "fc_message.h"
 #include <string>
+#include <unordered_map>
 
 using namespace std;
 
@@ -11,6 +12,7 @@ class FC_Client;
 class FC_Message_Handle;
 class BuddyModel;
 class BuddyItem;
+class FMsgModel;
 
 class FC_Friends_Handle : public QObject
 {
@@ -23,6 +25,7 @@ public:
     Q_INVOKABLE void add_friends(const QString &msg);
     Q_INVOKABLE void update_remark(const QString &team,const QString &item,const QString &user);
     Q_INVOKABLE void delete_friend(const QString &team,const QString &item);
+    void delete_friend(const string &account);
     Q_INVOKABLE void validation_request(const QString& result);
 
     void displaytoQML(FC_Message* message);
@@ -46,6 +49,8 @@ private:
 
     FC_Client* _client = nullptr;
     BuddyModel* _model  = nullptr; //好友结果model
+    FMsgModel* _fmsModel = nullptr;
+
 };
 
 

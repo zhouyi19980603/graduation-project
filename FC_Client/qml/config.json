@@ -1,0 +1,8 @@
+{
+    "title": "FC_Client",
+    "identifier": "com.yourcompany.wizardEVAP.FCClient",
+    "orientation": "auto",
+    "versioncode": 1,
+    "versionname": "1.0.0",
+    "stage": "test"
+}

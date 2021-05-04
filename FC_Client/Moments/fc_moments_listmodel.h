@@ -16,7 +16,8 @@ struct dynamic
     QString dyId;//动态的id
     QString like_text;//点赞的text
     QString comments;//评论的消息
-    bool is_like = false;//是否点过赞
+    int commentsNum=0; //评论消息的个数
+    bool is_like = false;//自己是否点过赞
 };
 
 class FC_Moments_Model : public QAbstractListModel
@@ -39,6 +40,9 @@ public:
 
     Q_INVOKABLE void add(dynamic& nic);
     Q_INVOKABLE void add();
+signals:
+    void update_mess();
+    void replay_dy(QString str);
 
 private:
     FC_Moments_Model(QObject* parent = nullptr);

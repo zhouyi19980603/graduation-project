@@ -78,4 +78,6 @@ void Buddy::clear()
     m_heading="";
     m_value="0";
     m_vis=false;
+    emit valueChanged();
+    emit visShowChanged();
 }

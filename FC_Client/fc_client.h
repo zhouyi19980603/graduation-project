@@ -6,6 +6,7 @@
 #include <string>
 #include <json/json.h>
 #include "fc_status.h"
+#include <unordered_map>
 
 using boost::thread;
 using std::string;

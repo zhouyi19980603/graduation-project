@@ -38,8 +38,10 @@ public:
     Q_INVOKABLE void clear();
 
     int getIndex(const std::string& parent_id);
-    void add(Comment& cm,int index);
+    Q_INVOKABLE void add(Comment& cm,int index);
    // bool insertRows(int row, int count, const QModelIndex &parent = QModelIndex());
+signals:
+    void comment_mess();
 private:
     CommentsModel(QObject* parent = nullptr);
     QVector<Comment> _data;//在里面去查找id是属于多少项，找到对应的项数

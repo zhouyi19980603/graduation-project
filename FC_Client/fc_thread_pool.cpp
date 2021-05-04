@@ -1,5 +1,6 @@
 #include "fc_thread_pool.h"
 #include <QDebug>
+#include <boost/bind.hpp>
 
 //==============================================
 //  public function

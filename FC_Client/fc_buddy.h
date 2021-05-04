@@ -27,7 +27,7 @@ public:
     void setValue(const QString& str);
     void setVisShow(const bool& str);
 
-    void clear();
+    Q_INVOKABLE void clear();
 signals:
     void dataChanged();
     void valueChanged();

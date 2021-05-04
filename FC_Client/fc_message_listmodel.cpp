@@ -1,7 +1,7 @@
 #include "fc_message_listmodel.h"
 #include "fc_message_instance.h"
 #include "fc_client.h"
-#include "fc_instance_handle.h"
+#include "fc_buddyitem.h"
 #include "fc_chat_listmodel.h"
 #include "fc_base64encrypt.h"
 #include "fc_message.h"
@@ -29,14 +29,14 @@ FC_Message_ListModel::FC_Message_ListModel(FC_Client*client,FC_Chat_ListModel* c
 {
 
     _instace = new FC_Message_Instance(_client);
-    QVector<QVector<QString>> tmp;
-    _all_mess.insert("@12345",tmp);
-    _all_mess.insert("@24567",tmp);
-    _all_mess.insert("@23456",tmp);
-    _all_mess.insert("@13456",tmp);
+//    QVector<QVector<QString>> tmp;
+//    _all_mess.insert("@12345",tmp);
+//    _all_mess.insert("@24567",tmp);
+//    _all_mess.insert("@23456",tmp);
+//    _all_mess.insert("@13456",tmp);
 
-    //群ID:
-    _all_mess.insert("@56789",tmp);
+//    //群ID:
+//    _all_mess.insert("@56789",tmp);
 
 }
 FC_Message_ListModel::~FC_Message_ListModel(){
@@ -45,9 +45,14 @@ FC_Message_ListModel::~FC_Message_ListModel(){
 
 MsgVector::iterator FC_Message_ListModel::handle_own_msg(QVector<QString> content)
 {
-    qDebug()<<"key date:"<<content.at(0)+content.at(1);
     MsgVector::iterator iter =this->_all_mess.find(content.at(1));  //检索key
-    iter.value().push_back(content);
+    if(iter == this->_all_mess.end())
+    {
+        QVector<QVector<QString>> tmp;
+        tmp.push_back(content);
+        _all_mess.insert(content.at(1),tmp);
+    }else
+        iter.value().push_back(content);
 
     return iter;
 }
@@ -67,7 +72,13 @@ MsgVector::iterator FC_Message_ListModel::handle_recv_msg(QVector<QString> conte
 {
     qDebug()<<"key date:"<<content.at(0)+content.at(1);
     MsgVector::iterator iter =this->_all_mess.find(content.at(0));  //检索key
-    iter.value().push_back(content);
+    if(iter == this->_all_mess.end())
+    {
+        QVector<QVector<QString>> tmp;
+        tmp.push_back(content);
+        _all_mess.insert(content.at(0),tmp);
+    }else
+        iter.value().push_back(content);
 
     return iter;
 }
@@ -112,6 +123,14 @@ void FC_Message_ListModel::add(QVector<QString> content){// display to socket
         content.removeLast();
     }
 
+//    time_t nowtime;
+//    struct tm* p;;
+//    time(&nowtime);
+//    p = localtime(&nowtime);
+
+//    char *m_time = new char;
+//    sprintf(m_time,"%02d-%02d %02d:%02d",p->tm_mon+1,p->tm_mday,p->tm_hour,p->tm_min);
+//    content[2] = QString::fromLocal8Bit(m_time);//时间
     QString tmpPathLeft= get_head_path(content.at(1));
     QString tmpPathRight = get_head_path(content.at(0));
 
@@ -119,8 +138,9 @@ void FC_Message_ListModel::add(QVector<QString> content){// display to socket
     content.push_back(tmpPathRight);
     content.push_back("0"); //设置可见还是不可见
     handle_own_msg(content);
-    //这里传入的是账户 内容 头像
-    this->_chat_listModel->set_last_msg({content.at(1),content.at(3),content.at(5)});
+    //这里传入的是账户 内容 头像 名字 时间
+    QString name =  _client->get_item()[content.at(1).toStdString()]->markname() =="" ? _client->get_item()[content.at(1).toStdString()]->nickname() : _client->get_item()[content.at(1).toStdString()]->markname();
+    this->_chat_listModel->add({content.at(1),content.at(3),content.at(5),name,content.at(2)});
 
     beginInsertRows(QModelIndex(),rowCount(),rowCount());
     //消息直接在UI上打印
@@ -139,7 +159,9 @@ void FC_Message_ListModel::recv(QVector<QString> content){// socket to display
     content.push_back(tmpPathRight);
     content.push_back("1");
     handle_recv_msg(content);
-    this->_chat_listModel->set_last_msg({content.at(0),content.at(3),content.at(5)});
+    QString name =  _client->get_item()[content.at(0).toStdString()]->markname() =="" ? _client->get_item()[content.at(0).toStdString()]->nickname() : _client->get_item()[content.at(0).toStdString()]->markname();
+    this->_chat_listModel->add({content.at(0),content.at(3),content.at(6),name,content.at(2)});
+//    this->_chat_listModel->set_last_msg({content.at(0),content.at(3),content.at(6),name,content.at(2)});
     //检测是否为当前聊天信息
     if(content.at(0) !=this->currentChatId()){
         return;
@@ -183,23 +205,27 @@ void FC_Message_ListModel::loadMsg(QString key)
 
     qDebug()<<"load key data: "<<key;
     MsgVector:: iterator iter =this->_all_mess.find(key);
-    for(int i = 0; i < iter->length();i++){
-        //消息直接在UI上打印
-        if(iter.value().at(i).at(0) == key){
-            set_msgOpacity(true);
-            //添加对应头像路径
-            beginInsertRows(QModelIndex(),rowCount(),rowCount());
-            this->_instace->recv(iter.value().at(i));
-            endInsertRows();
-            emit recv_mess();
-        }else {
-            set_msgOpacity(false);
-            beginInsertRows(QModelIndex(),rowCount(),rowCount());
-            this->_instace->add(iter.value().at(i));
-            endInsertRows();
-            emit recv_mess();
+    if(iter != _all_mess.end())
+    {
+        for(int i = 0; i < iter->length();i++){
+            //消息直接在UI上打印
+            if(iter.value().at(i).at(0) == key){
+                set_msgOpacity(true);
+                //添加对应头像路径
+                beginInsertRows(QModelIndex(),rowCount(),rowCount());
+                this->_instace->recv(iter.value().at(i));
+                endInsertRows();
+                emit recv_mess();
+            }else {
+                set_msgOpacity(false);
+                beginInsertRows(QModelIndex(),rowCount(),rowCount());
+                this->_instace->add(iter.value().at(i));
+                endInsertRows();
+                emit recv_mess();
+            }
         }
     }
+
 
 }
 
@@ -212,7 +238,6 @@ void FC_Message_ListModel::set_currentChatId(QString id)
 {
     this->_currentChatId = id;
     loadMsg(id);
-
 }
 
 
@@ -224,6 +249,12 @@ bool FC_Message_ListModel::msgOpacity() const
 bool FC_Message_ListModel::set_msgOpacity(bool tmp)
 {
     return this->_msgOpacity = tmp;
+}
+
+void FC_Message_ListModel::insertMsgVectorKey(const QString &name)
+{
+    QVector<QVector<QString>> tmp;
+    _all_mess.insert(name,tmp);
 }
 
 void FC_Message_ListModel::send_file(const QString &acc, const QString &filepath)

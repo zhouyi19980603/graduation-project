@@ -4,7 +4,8 @@
 #include <QVariant>
 #include <vector>
 
-class QGuiApplication;
+class QApplication;
+class FelgoApplication;
 class QQmlApplicationEngine;
 class FC_Client;
 class FC_Message_Handle;
@@ -21,6 +22,7 @@ class FC_Moments_Model;
 class FC_Moments_Control;
 class CommentsModel;
 class LikeMsg;
+class FMsgModel;
 
 class FC_Display
 {
@@ -53,8 +55,10 @@ private:
     CommentsModel* _comments_model = nullptr;
     LikeMsg* _msg = nullptr;
     Buddy* _buddy = nullptr;
+    FMsgModel* _fmsg_model = nullptr;
 
-    QGuiApplication* _app_ui = nullptr;
+    QApplication* _app_ui = nullptr;
+    FelgoApplication* _felgo = nullptr;
     QQmlApplicationEngine* _engine = nullptr;
 };
 

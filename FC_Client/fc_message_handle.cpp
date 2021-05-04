@@ -98,6 +98,10 @@ void FC_Message_Handle::handle_body(FC_Message* message){
             std::cout<<"修改好友备注"<<std::endl;
             //            _friends_handle->update_remark(message->body());
             break;
+        case FC_DELETE_FRIENDS:
+            //删除好友
+            _friends_handle->delete_friend(message->body());
+            break;
         default:
             cout<<"好友没有这样的类型"<<endl;
             break;
@@ -136,8 +140,12 @@ void FC_Message_Handle::handle_body(FC_Message* message){
             break;
         case FC_COMMENTS_REPLY1:
             //单纯的回复
+            cout<<"FC_COMMENTS_REPLY1"<<endl;
+            _moment_handle->handle_comment_reply(message->body(),1);
             break;
         case FC_COMMENTS_REPLY2:
+            cout<<"FC_COMMENTS_REPLY2"<<endl;
+            _moment_handle->handle_comment_reply(message->body(),2);
             //回复的回复，处理格式不同
             break;
         default:
@@ -172,26 +180,7 @@ void FC_Message_Handle::handle_text_msg(FC_Message* msg){
     vs.at(1) = recv_id;
     vs.at(2) = cont;
     vs.at(3) = type;
-
-//    char* w_account = new char[7];
-//    memset(w_account,'\0',7);
-//    char* m_account =new char[7];
-//    memset(m_account,'\0',6);
-//    memcpy(w_account,msg->header()+sizeof (unsigned)*2,FC_ACC_LEN);
-//    memcpy(m_account,msg->header()+14,FC_ACC_LEN);
-//    char *content = msg->body()+12;  //消息内容
-////    std::vector<std::string> vs(3);  //message type
-//    std::vector<std::string> vs(4);  //message type
-//    qDebug()<<"w_account: "<< w_account;
-//    vs.at(0)=w_account;   //消息发送者id
-//    vs.at(1)=m_account;   //消息接收者id
-//    vs.at(2)=content;     //消息内容
-//    vs.at(3) = "0";       //消息type
-
     this->_client->add_msg_to_display(vs);
-
-//    free(w_account);
-//    free(m_account);
 }
 
 void FC_Message_Handle::
@@ -218,7 +207,7 @@ handle_group_text_msg(FC_Message *msg)
 void FC_Message_Handle::handle_history(FC_Message *message)
 {
     this->_client->add_history_to_display(message);
-    qDebug() <<"json message 打印:"<<message->body();
+//    qDebug() <<"json message 打印:"<<message->body();
 }
 
 void FC_Message_Handle::handle_file_text_msg(FC_Message *msg)

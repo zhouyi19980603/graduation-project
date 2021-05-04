@@ -10,8 +10,10 @@
 #include "fc_friends_handle.h"
 #include "fc_buddy.h"
 #include "fc_chat_listmodel.h"
-#include <QGuiApplication>
+#include "fc_friends_model.h"
 #include <QQmlApplicationEngine>
+#include <QApplication>
+#include <FelgoApplication>
 #include <QtQml/QtQml>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
@@ -21,6 +23,8 @@
 #include "./Moments/fc_moments_control.h"
 #include "./Moments/fc_moments_like.h"
 #include "./Moments/fc_comments_listmodel.h"
+//#include "
+#include <FelgoLiveClient>
 
 using boost::thread;
 
@@ -38,11 +42,12 @@ FC_Display::FC_Display(FC_Client* client,FC_Profile* profile)
     this->_chat_listModel = new FC_Chat_ListModel();
     this->_list_model = new FC_Message_ListModel(_client,_chat_listModel,_profilemsg);
 
-//    this->_moments_model = new FC_Moments_Model();
+    //    this->_moments_model = new FC_Moments_Model();
     this->_moments_model = FC_Moments_Model::getInstance();
     this->_control = new FC_Moments_Control (client);
     this->_msg = LikeMsg::getInstance();
     this->_comments_model = CommentsModel::getInstance();
+    this->_fmsg_model = FMsgModel::getInstance();
 
 }
 FC_Display::~FC_Display(){
@@ -67,7 +72,7 @@ void FC_Display::recv_group_msg(std::vector<std::string> vs)
                                    QString::fromStdString(vs.at(1)),    //消息接受这ID
                                    QString::fromStdString("."),
                                    QString::fromStdString(vs.at(2)),
-                                  QString::fromStdString(vs.at(3))});
+                                   QString::fromStdString(vs.at(3))});
 }
 void FC_Display::recv(std::vector<std::string> vs){//display receive message
     std::cout <<"count打印测试"<<vs.at(2);
@@ -84,49 +89,31 @@ void FC_Display::recv_history(FC_Message *msg)
 {
     string tmpHistory = msg->body();
     //string tmpHistory = "{\"msgContent\":[\"@12345@23456反而完全个\",\"@12345@24567反而完全个\",\"@12345@24567发玩儿v\"]}";
-    qDebug() <<"json 打印:"<< msg->body();
+    //    qDebug() <<"json 打印:"<< msg->body();
     Json::Value root;
     Json::Reader reader;
 
 
     if (reader.parse(tmpHistory, root))
     {
-        //读取数组信息
-        cout << "Here's history:" << endl;
 
         for (unsigned int i = 0; i < root["chats"].size(); i++)
         {
-            string send_id,recv_id,time,content,type;
-            send_id = root["chats"][i]["send_id"].asString();
-            recv_id = root["chats"][i]["recv_id"].asString();
-            time = root["chats"][i]["time"].asString();
-            content = root["chats"][i]["msg_content"].asString();
-            type = root["chats"][i]["msg_type"].asString();
-
-            this->_list_model->handle_history({QString::fromStdString(send_id),
-                                               QString::fromStdString(recv_id),    //消息接受这ID
-                                               QString::fromStdString(time),
-                                               QString::fromStdString(content),
-                                               QString::fromStdString(type)});
-//            //更改
-//            string tmpContent = root["chats"][i].asString();
-//            cout <<"元素打印"<< tmpContent<<endl;
-
-//            const char* tmp = tmpContent.c_str();
-//            char* w_account = new char[7];
-//            memset(w_account,'\0',7);
-//            char* m_account =new char[7];
-//            memset(m_account,'\0',6);
-//            memcpy(w_account,tmp,FC_ACC_LEN);  //第一个账号
-//            memcpy(m_account,tmp+6,FC_ACC_LEN);//第二个账号
-//            const char *content = tmp+12;  //消息内容
-
-//            this->_list_model->handle_history({QString::fromStdString(w_account),
-//                                               QString::fromStdString(m_account),    //消息接受这ID
-//                                               QString::fromStdString("."),
-//                                               QString::fromStdString(content),
-//                                               QString::fromStdString("0")});  //文本消息
-
+            this->_list_model->insertMsgVectorKey(root["chats"][i]["id"].asCString());
+            for(auto each : root["chats"][i]["contents"])
+            {
+                string send_id,recv_id,time,content,type;
+                send_id = each["send_id"].asString();
+                recv_id = each["recv_id"].asString();
+                time = each["time"].asString();
+                content = each["msg_content"].asString();
+                type = each["msg_type"].asString();
+                this->_list_model->handle_history({QString::fromStdString(send_id),
+                                                   QString::fromStdString(recv_id),    //消息接受这ID
+                                                   QString::fromStdString(time),
+                                                   QString::fromStdString(content),
+                                                   QString::fromStdString(type)});
+            }
         }
 
         cout << "Reading Complete!" << endl;
@@ -139,9 +126,15 @@ void FC_Display::recv_history(FC_Message *msg)
 void FC_Display::show(){
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     int argc=0;
-    this->_app_ui = new QGuiApplication(argc,nullptr);
+    this->_app_ui = new QApplication(argc,nullptr);
     this->_engine = new QQmlApplicationEngine;
+    this->_felgo = new FelgoApplication;
 
+    this->_felgo->setPreservePlatformFonts(true);
+    this->_felgo->initialize(_engine);
+    this->_felgo->setLicenseKey(PRODUCT_LICENSE_KEY);
+
+    this->_felgo->setMainQmlFileName(QStringLiteral("qml/Main.qml"));
     qmlRegisterType<BuddyItem>("buddy",1,0,"BuddyItem");
     qmlRegisterType<BuddyTeam>("buddy",1,0,"BuddyTeam");
 
@@ -158,6 +151,8 @@ void FC_Display::show(){
     this->_engine->rootContext()->setContextProperty("msg",this->_msg);
     this->_engine->rootContext()->setContextProperty("comments_model",this->_comments_model);
 
-    this->_engine->load(QUrl(QStringLiteral("qrc:/qml/Fc_MainWindow.qml")));
+    this->_engine->rootContext()->setContextProperty("fmsg_model",this->_fmsg_model);
+    this->_engine->load(QUrl(this->_felgo->mainQmlFileName()));
+    //    FelgoLiveClient clients (this->_engine);
     this->_app_ui->exec();
 }

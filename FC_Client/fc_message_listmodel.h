@@ -41,6 +41,7 @@ public:
     QString currentChatId() const;
     bool msgOpacity() const;
     bool set_msgOpacity(bool tmp);
+    void insertMsgVectorKey(const QString& name);
 
     Q_INVOKABLE void send_file(const QString& acc,const QString& filename);
     Q_INVOKABLE void open_file(const QString& filename);
