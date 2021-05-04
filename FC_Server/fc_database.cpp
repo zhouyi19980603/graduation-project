@@ -64,6 +64,7 @@ QSqlQuery FC_DataBase::query(const QString &sql)
 bool FC_DataBase::insert(const QString &user_id, const QString &friend_id)
 {
     QSqlQuery query;
+    //默认添加到friends分组中去
     query.prepare("insert into friends_info(user_id,friend_id,group_name,markname) values (?,?,?,?)");
     query.addBindValue(user_id);
     query.addBindValue(friend_id);

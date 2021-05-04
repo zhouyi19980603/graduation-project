@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstring>
 #include "fc_header.h"
+#include <iostream>
 
 //==============================================
 //  public function
@@ -64,10 +65,11 @@ char* FC_Message::body()const{
 
 char *FC_Message::get_friends_identify() const
 {
-    char* sd=(char*)malloc(FC_ACC_LEN+1);
-    memset(sd,'\0',FC_ACC_LEN+1);
-    memcpy(sd,this->_data+FC_MESSAGE_HEADER_LENGTH,FC_ACC_LEN);
-    return sd;
+    char* rv=(char*)malloc(FC_ACC_LEN+1);
+    memset(rv,'\0',FC_ACC_LEN+1);
+    memcpy(rv,this->_data+FC_MESSAGE_HEADER_LENGTH,FC_ACC_LEN);
+    std::cout<<rv<<std::endl;
+    return rv;
 }
 
 char *FC_Message::get_self_identify() const
@@ -75,6 +77,7 @@ char *FC_Message::get_self_identify() const
     char* sd=(char*)malloc(FC_ACC_LEN+1);
     memset(sd,'\0',FC_ACC_LEN+1);
     memcpy(sd,this->_data+FC_MESSAGE_HEADER_LENGTH+FC_ACC_LEN,FC_ACC_LEN);
+    std::cout<<sd<<std::endl;
     return sd;
 }
 

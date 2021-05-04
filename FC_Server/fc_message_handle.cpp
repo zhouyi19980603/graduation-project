@@ -59,8 +59,7 @@ void FC_Message_Handle::InitRedisPost(const string &user_id)
     QSqlQuery qu = db->get_user_post(user_id.c_str());
     while(qu.next()){
         string post_id = qu.value(0).toString().toStdString();
-        string user_id = qu.value(0).toString().toStdString();
-
+        string user_id = qu.value(1).toString().toStdString();
         _reply = (redisReply*)redisCommand(_content,"hset %s %s %s",post_id.c_str(),"user_id",user_id.c_str());
         freeReplyObject(_reply);
     }
@@ -154,9 +153,13 @@ void FC_Message_Handle::handle_body(FC_Message* message){
         }
     }else if(type & FC_MOMENTS){
         switch (type) {
+        case FC_NO_LIKE:
+            cout<<"取消点赞消息"<<endl;
+            handle_like_message(type,message->body());
+            break;
         case FC_LIKE:  //点赞
             cout<<"点赞消息"<<endl;
-            handle_like_message(message->body());
+            handle_like_message(type,message->body());
             break;
         case FC_REQUEST_COMMENTS: //评论
             handle_request_comments(message->body());
@@ -169,10 +172,12 @@ void FC_Message_Handle::handle_body(FC_Message* message){
             break;
         case FC_COMMENTS_REPLY1:
             //评论
+            cout<<"评论消息1"<<endl;
             //把评论id写入对应的post_id中，转发给所有的好友，通知他们这个动态有人评论了
             handle_comments_reply1(message->body());
             break;
         case FC_COMMENTS_REPLY2:
+            cout<<"评论消息2"<<endl;
             handle_comments_reply2(message->body());
             //回复别人的评论
             break;
@@ -392,8 +397,10 @@ void FC_Message_Handle::friends_search_handle(const char *s)
     FC_Message* message = new FC_Message;
     message->set_message_type(FC_FRIENDS_SEARCH_R); //返回查找好友列表
     //先判断是否在accounts中，如果在的话，在判断是否在在线列表中，若在的话直接发送，不再的话就发送在离线列表中，等用户上线
+    cout<<"_server->get_accounts().count(s): "<<_server->get_accounts().count(s)<<" : "<<(_server->get_onlineP()[s] != _connection)<<endl;
     if(_server->get_accounts().count(s) !=0 && _server->get_onlineP()[s] != _connection) //condition is error
     {
+        cout<<"会直接进来吗"<<endl;
         DbBroker* broker = new DbBroker ();
         QSqlQuery query =  broker->get_user_msg(QString::fromStdString(s)); //得到用户信息
         query.next();
@@ -413,7 +420,6 @@ void FC_Message_Handle::friends_search_handle(const char *s)
         std::string strContent = ss.str();
         message->set_body_length(strContent.size());
         message->set_body(strContent.c_str(),strContent.size());
-
         delete broker;
     }
     else
@@ -433,13 +439,16 @@ void FC_Message_Handle::friends_search_handle(const char *s)
     _connection->write(message);
 
 }
-
+//好友标识 自己标识
 void FC_Message_Handle::add_friends(FC_Message *msg)
 {
+    cout<<"msg->body()"<<msg->body()<<endl;
+
     //这接消息转发给了服务端
     char* sd = msg->get_self_identify();//添加好友端的标识
     char* rv = msg->get_friends_identify(); //发送给好友的id
 
+    cout<<sd<<" : "<<rv<<endl;
     std::string str ;
     str = make_json_user(sd);
 
@@ -491,7 +500,18 @@ void FC_Message_Handle::delete_friend(FC_Message* msg)
     {
         std::cout<<"删除好友成功"<<std::endl;
     }
+    //通知另一个好友更新好友的列表
 
+    FC_Message* omsg = generate_message(FC_DELETE_FRIENDS,account.c_str());
+    _server->forward_message(friends,omsg);
+    //同时来删除好友对应的聊天记录
+    //删除@12345中@24567的聊天记录，
+    //删除@24567中@12345的聊天记录
+
+    string filename1 = "./history/userChatHistory.json";
+
+    delete_json_data(filename1,account,friends);
+    delete_json_data(filename1,friends,account);
 }
 
 void FC_Message_Handle::handle_remark(const char *s)
@@ -527,7 +547,7 @@ void FC_Message_Handle::handle_offlineM(const string &acc)
                 if(reader.parse(msg->body(),root))
                 {
                     id = root["id"].asString();
-                    store_json_data(id,"./history/userChatHistory.json",acc);
+//                    store_json_data(id,"./history/userChatHistory.json",acc);
                 }else
                 {
                     cout<<"parse failed handle_offlineM"<<endl;
@@ -634,10 +654,19 @@ void FC_Message_Handle::send_history(const string &userId)
        if(reader1.parse(is1,root1))
        {
            Json::Value item;
+           //通过第一个表可以得到好友id以及与好友对应的聊天id
            for(int i=0;i<root1[userId].size();i++)
            {
-               string msgId = root1[userId][i].asString();
-               writeRoot["chats"].append(root2[msgId]);
+
+               Json::Value wroot1;
+               wroot1["id"] = root1[userId][i]["id"];
+
+              for(auto each : root1[userId][i]["contents"])
+              {
+                wroot1["contents"].append(root2[each.asString()]);
+              }
+
+               writeRoot["chats"].append(wroot1);
            }
        }
 
@@ -685,19 +714,19 @@ void FC_Message_Handle::handle_text_msg(FC_Message* msg){
         recv_id = root["recv_id"].asString();
         id = root["id"].asString();
 
-        //保存在文件中保存在userChatHistory.json中,id为内容,在线为正常存储信息
+//        //保存在文件中保存在userChatHistory.json中,id为内容,在线为正常存储信息
         if(_server->get_onlineP().count(recv_id) !=0)
         //发送给好友
         {
             this->_server->forward_message(recv_id,msg);
-            store_json_data(id,"./history/userChatHistory.json",send_id);
-            store_json_data(id,"./history/userChatHistory.json",recv_id);
+            store_json_data(id,"./history/userChatHistory.json",send_id,recv_id);
+            store_json_data(id,"./history/userChatHistory.json",recv_id,send_id);
 
         }
         else
         {
             //发送者的消息正常存储
-            store_json_data(id,"./history/userChatHistory.json",send_id);
+            store_json_data(id,"./history/userChatHistory.json",send_id,recv_id);
             _server->set_offlineM(recv_id,msg);
 
         }
@@ -776,7 +805,7 @@ void FC_Message_Handle::handle_new_moments(const char* content)
     }
 
     DbBroker* broker = new DbBroker();
-    if(broker->add_post(QString::fromStdString(acc),QString::fromStdString(postId))){
+//    if(broker->add_post(QString::fromStdString(acc),QString::fromStdString(postId))){
         //添加到json文件中
         string filename = "./config/moments.json";
 
@@ -786,13 +815,13 @@ void FC_Message_Handle::handle_new_moments(const char* content)
         item["time"] = root["time"];//时间
         item["user_id"] = root["userId"];
         item["post_id"] = root["dyId"];
-        add_json_data(item,filename,postId,1);//里面的图片直接保存的二进制图片,1表示对象
+//        add_json_data(item,filename,postId,1);//里面的图片直接保存的二进制图片,1表示对象
 
         item.clear();//清空
         item["post_id"] = root["dyId"];
         filename = "./config/user_moments.json";
         //保存在user_moments中
-        add_json_data(item,filename,acc,2);//2表示数组
+//        add_json_data(item,filename,acc,2);//2表示数组
 
         //添加进redis中（表明文章的作者）
         _reply = (redisReply*)redisCommand(_content,"hset %s %s %s",postId.c_str(),"user_id",acc.c_str());
@@ -805,21 +834,21 @@ void FC_Message_Handle::handle_new_moments(const char* content)
         for(auto each : _server->get_friends_list()[acc])
         {
             //也要添加进所有的好友中
-            add_json_data(item,filename,each,2);
+//            add_json_data(item,filename,each,2);
             Observer* observer = new Viewer (_server,each);
             moments->registerObserver(observer);//注册进去
         }
         moments->setContent(content,FC_NEW_MOMENTS);
-    }else
-    {
-        std::cout<<"add post failed"<<std::endl;
-    }
+//    }else
+//    {
+//        std::cout<<"add post failed"<<std::endl;
+//    }
 
 
 }
 
 //就可以直接查询redis中来确定user_id即可
-void FC_Message_Handle::handle_like_message(const char *content)
+void FC_Message_Handle::handle_like_message(unsigned type,const char *content)
 {
     Json::Value root;
     Json::Reader reader;
@@ -834,42 +863,47 @@ void FC_Message_Handle::handle_like_message(const char *content)
         userNickname = root["userNick"].asString(); //点赞的nickname
     }
     //这里的userId指的是点赞的用户id
-    update_json_like_data(userId,dyId);
-    //通过dyId，查找对应的authorId，这里就会开始使用redis
-    _reply = (redisReply*)redisCommand(_content,"hget %s user_id",dyId.c_str());
-
-
-    //得到点赞消息后存入对应的moments.json中（post_id）
-
-    //观察者的放入,（先判断这个帐号是不是当前post的作者，是则为全部好友都添加进去，不是则过滤）
-    Subject* moments = new ConcreteMoments ();
-    moments->clearObserver();
-    //得到所有的列表
-    std::cout<<"handle_like_message:"<<_reply->str<<std::endl;
-    std::cout<<_server->get_friends_list()[_reply->str].size()<<std::endl;
-    if(userId == _reply->str)
+    if(type == FC_LIKE)
+        update_json_like_data(userId,dyId);
+    else if(type == FC_NO_LIKE)
     {
-        for(auto each : _server->get_friends_list()[_reply->str])
-        {
-            Observer* observer = new Viewer (_server,each);
-            moments->registerObserver(observer);//注册进去
-        }
-    }else
-    {
-        for(auto each : _server->get_friends_list()[_reply->str])
-        {
-            if(each != userId)
-            {
-                Observer* observer = new Viewer (_server,each);
-                moments->registerObserver(observer);//注册进去
-            }
-        }
-        //把自己也注册进去
-        Observer* observer = new Viewer (_server,_reply->str);
-        moments->registerObserver(observer);//注册进去
+        delete_json_like_data(userId,dyId);
     }
+//    //通过dyId，查找对应的authorId，这里就会开始使用redis
+//    _reply = (redisReply*)redisCommand(_content,"hget %s user_id",dyId.c_str());
 
-    moments->setContent(content,FC_LIKE);//只传送nickname进去
+
+//    //得到点赞消息后存入对应的moments.json中（post_id）
+
+//    //观察者的放入,（先判断这个帐号是不是当前post的作者，是则为全部好友都添加进去，不是则过滤）
+//    Subject* moments = new ConcreteMoments ();
+//    moments->clearObserver();
+//    //得到所有的列表
+//    std::cout<<"handle_like_message:"<<_reply->str<<std::endl;
+//    std::cout<<_server->get_friends_list()[_reply->str].size()<<std::endl;
+//    if(userId == _reply->str)
+//    {
+//        for(auto each : _server->get_friends_list()[_reply->str])
+//        {
+//            Observer* observer = new Viewer (_server,each);
+//            moments->registerObserver(observer);//注册进去
+//        }
+//    }else
+//    {
+//        for(auto each : _server->get_friends_list()[_reply->str])
+//        {
+//            if(each != userId)
+//            {
+//                Observer* observer = new Viewer (_server,each);
+//                moments->registerObserver(observer);//注册进去
+//            }
+//        }
+//        //把自己也注册进去
+//        Observer* observer = new Viewer (_server,_reply->str);
+//        moments->registerObserver(observer);//注册进去
+//    }
+
+//    moments->setContent(content,FC_LIKE);//只传送nickname进去
     //找到user_id向user_id发送通知有人点赞（这里面进行处理），向user_id的所有好友发送这个点赞通知
     //_reply->str;//得到对应的值user_id,在里面加一个对应的类型即可
 }
@@ -960,13 +994,13 @@ void FC_Message_Handle::handle_request_comments(const char *content)
     is2.close();
 }
 
-void FC_Message_Handle::handle_comments_reply1(const char *content)
+void FC_Message_Handle::handle_comments_reply1(const char *allcontent)
 {
     //处理简单的评论信息，保存在数据库中，这里暂时不考虑发不发送给离线好友
     Json::Reader reader;
     Json::Value root;
 
-    if(reader.parse(content,root))
+    if(reader.parse(allcontent,root))
     {
         //解析数据,先获得所有的数据
         string id,name,content,post_id,user_id,parent_id,time,puser_id;
@@ -978,14 +1012,18 @@ void FC_Message_Handle::handle_comments_reply1(const char *content)
         parent_id = root["parent_id"].asString();
         time = root["time"].asString();
         puser_id = root["puser_id"].asString();
+        //不写入json中
+
         //通过post_id放入对应的post中
-        update_json_data(id,post_id,"comments");
-        //在放入文件comments.json中,键为id,值为root
-        add_json_data(root,"./config/comments.json",id,1);
+//        update_json_data(id,post_id,"comments");
+//        在放入文件comments.json中,键为id,值为root
+//        add_json_data(root,"./config/comments.json",id,1);
         //发送给好友
         //通过查询redis得到该post_id的user_id(作者)是谁
+
         _reply = (redisReply*)redisCommand(_content,"hget %s user_id",post_id.c_str());
 
+        cout<<"_reply->str"<<_reply->str<<endl;
 
 
         Subject* moments = new ConcreteMoments ();
@@ -1014,20 +1052,23 @@ void FC_Message_Handle::handle_comments_reply1(const char *content)
             moments->registerObserver(observer);//注册进去
         }
 
-        moments->setContent(content,FC_COMMENTS_REPLY1);
+        moments->setContent(allcontent,FC_COMMENTS_REPLY1);
         freeReplyObject(_reply);
+    }else
+    {
+        cout<<"handle_comments_reply1解析出错"<<endl;
     }
 
 }
 
-void FC_Message_Handle::handle_comments_reply2(const char *content)
+void FC_Message_Handle::handle_comments_reply2(const char *allcontent)
 {
     //评论的评论
     //处理简单的评论信息，保存在数据库中，这里暂时不考虑发不发送给离线好友
     Json::Reader reader;
     Json::Value root;
 
-    if(reader.parse(content,root))
+    if(reader.parse(allcontent,root))
     {
         //解析数据,先获得所有的数据
         string id,name,content,post_id,user_id,parent_id,time,puser_id;
@@ -1039,12 +1080,14 @@ void FC_Message_Handle::handle_comments_reply2(const char *content)
         parent_id = root["parent_id"].asString();
         time = root["time"].asString();
         puser_id = root["puser_id"].asString();
+
         //通过post_id放入对应的post中
-        update_json_data(id,post_id,"comments");
+//        update_json_data(id,post_id,"comments");
         //在放入文件comments.json中,键为id,值为root
-        add_json_data(root,"./config/comments.json",id,1);
+//        add_json_data(root,"./config/comments.json",id,1);
         //发送给好友
         //通过查询redis得到该post_id的user_id(作者)是谁
+
         _reply = (redisReply*)redisCommand(_content,"hget %s user_id",post_id.c_str());
 
 
@@ -1073,7 +1116,7 @@ void FC_Message_Handle::handle_comments_reply2(const char *content)
             Observer* observer = new Viewer (_server,_reply->str);
             moments->registerObserver(observer);//注册进去
         }
-        moments->setContent(content,FC_COMMENTS_REPLY2);
+        moments->setContent(allcontent,FC_COMMENTS_REPLY2);
         freeReplyObject(_reply);
     }
 }
@@ -1118,7 +1161,7 @@ bool FC_Message_Handle::save_user_head(const string &acc, const string &heading)
     return true;
 }
 
-void FC_Message_Handle::store_json_data(const string& item, const string &filename, const string &key)
+void FC_Message_Handle::store_json_data(const string& item, const string &filename, const string &key,const string& key1)
 {
     Json::Reader reader;
     Json::Value root;
@@ -1139,13 +1182,40 @@ void FC_Message_Handle::store_json_data(const string& item, const string &filena
         is.open(filename,std::ios::binary);
         if(reader.parse(is,root,false))
         {
-            root[key].append(item);
+            bool isexit = false;
+            //判断这个用户之前是否聊过天，是否存在这个用户
+            for(auto& each : root[key])
+            {
+                if(each["id"].asString() == key1)
+                {
+                    //进行操作
+                    each["contents"].append(item);
+                    isexit = true;
+                    break;
+                }
+            }
+            if(!isexit)
+            {
+                //表明不存在
+                Json::Value value1;
+                value1["id"] = key1;
+                value1["contents"].append(item);
+                root[key].append(value1);
+            }
             Json::FastWriter write;
             string strWrite = write.write(root);
             ofstream ofs;
             ofs.open(filename);
             ofs << strWrite;
             ofs.close();
+
+//            root[key].append(item);
+//            Json::FastWriter write;
+//            string strWrite = write.write(root);
+//            ofstream ofs;
+//            ofs.open(filename);
+//            ofs << strWrite;
+//            ofs.close();
         }
         is.close();
     }
@@ -1216,6 +1286,38 @@ void FC_Message_Handle::update_json_like_data(const string& item,const string& k
     is.close();
 }
 
+void FC_Message_Handle::delete_json_like_data(const string &item, const string &key)
+{
+    cout<<"delete_json_like_data"<<endl;
+    Json::Reader reader;
+    Json::Value root;
+//    ifstream is;
+
+    string filename = "./config/moments.json";
+    ifstream is(filename,ios::binary);
+    if(reader.parse(is,root,false))
+    {
+        for(int i=0;i<root[key]["likes"].size();i++)
+        {
+            auto each = root[key]["likes"][i];
+            if(item == each.asString())
+            {
+                cout<<"表明有这个item：item"<<item<<endl;
+                root[key]["likes"].removeIndex(i,&each);
+                break;
+            }
+        }
+        Json::FastWriter write;
+        string strWrite = write.write(root);
+        ofstream ofs;
+        ofs.open(filename);
+        ofs << strWrite;
+//        cout<<"打印str"<<strWrite<<endl;
+        ofs.close();
+        is.close();
+    }
+}
+
 void FC_Message_Handle::update_json_data(const string &item, const string &primaryKey, const string &secondKey)
 {
     Json::Reader reader;
@@ -1235,6 +1337,34 @@ void FC_Message_Handle::update_json_data(const string &item, const string &prima
         ofs.close();
     }
     is.close();
+}
+
+void FC_Message_Handle::delete_json_data(const string &filename,const string &acc1,const string &acc2)
+{
+    Json::Value root;
+    Json::Reader reader;
+    ifstream is1(filename,ios::binary);
+    if(!reader.parse(is1,root))
+    {
+        cout<<"删除聊天记录"<<endl;
+        exit(0);
+    }
+    for(int i=0;i<root[acc1].size();i++)
+    {
+        auto each = root[acc1][i];
+        if(each["id"].asString() == acc2)
+        {
+            root[acc1].removeIndex(i,&each);
+            break;
+        }
+    }
+    Json::FastWriter write;
+    string strWrite = write.write(root);
+    ofstream ofs;
+    ofs.open(filename);
+    ofs << strWrite;
+    ofs.close();
+    is1.close();
 }
 
 //端对端存储

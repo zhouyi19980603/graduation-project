@@ -77,11 +77,13 @@ bool DbBroker::update_mark(const QString &user_id, const QString &friend_id, con
     return db->update(query);
 }
 
+//删除应该直接就删除了双方好友
 bool DbBroker::delete_friends(const QString &user_id, const QString &friend_id)
 {
     //delete from friends_info where user_id='@12345' and friend_id='@13456';
-    QString query = "delete from friends_info where user_id='"+user_id+"' and friend_id='"+friend_id+"'";
-    return db->move(query);
+    QString query1 = "delete from friends_info where user_id='"+user_id+"' and friend_id='"+friend_id+"'";
+    QString query2 = "delete from friends_info where user_id='"+friend_id+"' and friend_id='"+user_id+"'";
+    return db->move(query1) && db->move(query2);
 }
 
 bool DbBroker::add_friends(const QString &user_id, const QString &friends_id)

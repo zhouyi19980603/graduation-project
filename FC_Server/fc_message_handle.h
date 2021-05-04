@@ -54,7 +54,7 @@ public:
 
     //朋友圈消息
     void handle_new_moments(const char* content);
-    void handle_like_message(const char* content);
+    void handle_like_message(unsigned type,const char* content);
     void handle_request_dy(const char* content);
     void handle_request_comments(const char* content);
     void handle_comments_reply1(const char* content);
@@ -79,10 +79,13 @@ private:
 
     //保存数据在json文件中（朋友圈信息，聊天记录）
 
-    void store_json_data(const string& item,const string& filename,const string& key);
+    void store_json_data(const string& item,const string& filename,const string& key,const string& key1);
     void add_json_data(Json::Value item,const string& filename,const string& key,unsigned type);
     void update_json_like_data(const string& item,const string& key);
+    void delete_json_like_data(const string& item,const string& key);
     void update_json_data(const string& item,const string& primaryKey,const string& secondKey);
+
+    void delete_json_data(const string &filename,const string &acc1,const string &acc2);
 
 private:
     //    DbBroker* _broker = nullptr;
